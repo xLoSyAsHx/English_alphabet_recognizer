@@ -27,7 +27,9 @@ setup(
     python_requires='>=3.7.*',
     install_requires=[
         'torch>=1.4.0',
-        'torchvision>=0.5.0'
+        'torchvision>=0.5.0',
+        'Pillow',
+        'scikit-image'
     ],
     platforms=['Windows 10'],
     license='NO'
