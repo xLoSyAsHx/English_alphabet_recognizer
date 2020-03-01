@@ -29,7 +29,8 @@ setup(
         'torch>=1.4.0',
         'torchvision>=0.5.0',
         'Pillow',
-        'scikit-image'
+        'scikit-image',
+        'compress-pickle>=1.1.1'
     ],
     platforms=['Windows 10'],
     license='NO'
