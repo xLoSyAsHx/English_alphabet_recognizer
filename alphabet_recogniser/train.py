@@ -22,14 +22,19 @@ transform = transforms.Compose(
     [transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]) # ((mean1, mean2, ...), (std1, std2, ...))
 
-train_set = NISTDB19Dataset(root_dir='./../data', data_type='low_letters', train=False, download=True,
-                          transform=transform, size_limit=1000)
-train_loader = torch.utils.data.DataLoader(train_set, batch_size=4,
+
+NISTDB19Dataset.download_and_preprocess(root_dir='./../data', data_type='low_letters')
+
+train_set = NISTDB19Dataset(root_dir='./../data', data_type='low_letters', train=True, download=True,
+                            use_preproc=True,
+                            transform=transform, size_limit=100, size_limit_per_class=True)
+train_loader = torch.utils.data.DataLoader(train_set, batch_size=40,
                                           shuffle=True, num_workers=0)
 
 test_set = NISTDB19Dataset(root_dir='./../data', data_type='low_letters', train=False, download=True,
-                          transform=transform, size_limit=300)
-test_loader = torch.utils.data.DataLoader(test_set, batch_size=4,
+                           use_preproc=True,
+                           transform=transform, size_limit=300, size_limit_per_class=True)
+test_loader = torch.utils.data.DataLoader(test_set, batch_size=40,
                                           shuffle=True, num_workers=0)
 
 

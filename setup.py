@@ -28,9 +28,11 @@ setup(
     install_requires=[
         'torch>=1.4.0',
         'torchvision>=0.5.0',
+        'compress-pickle>=1.1.1',
         'Pillow',
         'scikit-image',
-        'compress-pickle>=1.1.1'
+        'numpy',
+        'tqdm',
     ],
     platforms=['Windows 10'],
     license='NO'
