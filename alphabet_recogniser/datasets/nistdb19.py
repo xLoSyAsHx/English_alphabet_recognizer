@@ -64,6 +64,7 @@ class NISTDB19Dataset(data.Dataset):
                                repr(tuple(self.folder_map.keys())))
         self.data = []
         self.targets = []
+        self.classes = []
         self.data_type = data_type
         self.root_dir = os.path.expanduser(root_dir)
         self.train = train
@@ -154,9 +155,9 @@ class NISTDB19Dataset(data.Dataset):
             return compress_pickle.load(batch_file, compression=compression)
 
     @staticmethod
-    def download_and_preprocess(root_dir, data_type):
+    def download_and_preprocess(root_dir, data_type, check_md5=True):
         DS = NISTDB19Dataset
-        DS.download(root_dir, True)
+        DS.download(root_dir, True, check_md5)
         sys.stdout.flush()
 
         preproc_pdath = os.path.join(root_dir, 'by_class_preproc')
@@ -285,6 +286,7 @@ class NISTDB19Dataset(data.Dataset):
             if use_preproc:
                 path_to_img_dir = os.path.join(self.root_dir, 'by_class_preproc', hex(class_idx)[2:])
                 self._add_samples_from_batches(path_to_img_dir, 'train' if self.train else 'test', verify)
+                self.classes.append(self.targets[-1])
             else:
                 newly_added = 0
                 class_folder_name = hex(class_idx)[2:]
@@ -304,4 +306,4 @@ class NISTDB19Dataset(data.Dataset):
                                                    class_folder_name,
                                                    'train_' + class_folder_name)
                     self._add_samples_from_dir(path_to_img_dir, chr(class_idx), 0)
-
+                self.classes.append(self.targets[-1])
