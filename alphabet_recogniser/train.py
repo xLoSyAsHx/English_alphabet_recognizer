@@ -39,21 +39,22 @@ if __name__ == "__main__":
     args = parser.parse_args()
     parser.check_compatibility(args)
 
-NISTDB19Dataset.download_and_preprocess(root_dir='./../data', data_type='low_letters')
+if args.use_preprocessed_data:
+    NISTDB19Dataset.download_and_preprocess(root_dir='./../data', data_type=args.data_type, str_classes=args.classes)
 
-train_set = NISTDB19Dataset(root_dir='./../data', data_type='low_letters', train=True, download=True,
-                            use_preproc=True,
-                            transform=transform, size_limit=100, size_limit_per_class=True)
-train_loader = torch.utils.data.DataLoader(train_set, batch_size=40,
-                                           shuffle=True, num_workers=0)
+train_set = NISTDB19Dataset(root_dir=args.root_dir, data_type=args.data_type, train=True, download=True,
+                            str_classes=args.classes, use_preproc=args.use_preprocessed_data,
+                            transform=transform, size_limit=args.train_limit)
+train_loader = torch.utils.data.DataLoader(train_set, batch_size=50,
+                                           shuffle=args.shuffle_train, num_workers=0)
 
-test_set = NISTDB19Dataset(root_dir='./../data', data_type='low_letters', train=False, download=True,
-                           use_preproc=True,
-                           transform=transform, size_limit=300, size_limit_per_class=True)
-test_loader = torch.utils.data.DataLoader(test_set, batch_size=40,
-                                          shuffle=True, num_workers=0)
+test_set = NISTDB19Dataset(root_dir=args.root_dir, data_type=args.data_type, train=False, download=True,
+                           str_classes=args.classes, use_preproc=args.use_preprocessed_data,
+                           transform=transform, size_limit=args.test_limit)
+test_loader = torch.utils.data.DataLoader(test_set, batch_size=50,
+                                          shuffle=args.shuffle_test, num_workers=0)
 
-net = EngAlphabetRecognizer96(num_classes=26)
+net = EngAlphabetRecognizer96(num_classes=len(train_set.classes))
 
 device = torch.device('cpu')
 if torch.cuda.is_available() and False:
@@ -65,7 +66,7 @@ else:
 
 PATH = 'cifar_net.torchmodel'
 
-EPOCH_NUM = 4
+EPOCH_NUM = args.e
 if os.path.exists(PATH) and False:
     net.load_state_dict(torch.load(PATH))
 else:
@@ -92,18 +93,17 @@ else:
             # print statistics
             running_loss += loss.item()
             if i % 5 == 4:  # print every 50 mini-batches
-                print('[%d, %5d] loss: %.3f' %
-                      (epoch + 1, i + 1, running_loss / i))
-        print('Epoch', epoch, '   time:', time.perf_counter() - start_time, 'seconds')
+                print(f'[{epoch + 1}, {i + 1}] loss: {running_loss / i:1.3f}')
+        print(f'Epoch {epoch}   time: {time.perf_counter() - start_time:6.0f} seconds')
 
-    print('Finished Training ', time.perf_counter() - start_time, 'seconds')
+    print(f'Finished Training {time.perf_counter() - start_time:6.0f} seconds')
     x = np.arange(0, len(loss_values))
     fig, ax = plt.subplots(figsize=(15, 15))
     ax.grid()
-    ax.set(xlabel='batch №. (batch_size=40)', ylabel='loss',
+    ax.set(xlabel='batch №. (batch_size=50)', ylabel='loss',
            title='Loss')
     ax.plot(x, loss_values)
-    fig.savefig(f"./../data/loss_e[{EPOCH_NUM}]_cl[{len(train_set.classes)}]_tr_s[{1000}].png", dpi=400)
+    fig.savefig(f"./../data/loss_e[{EPOCH_NUM}]_cl[{len(train_set.classes)}]_tr_s[{train_set.size_per_class}].png", dpi=400)
     step = round(len(loss_values) / (train_set.size_per_class / train_loader.batch_size))
 
 correct = 0
@@ -117,24 +117,27 @@ with torch.no_grad():
         outputs = net(images)
         p_values, p_indexes = torch.max(outputs.data, 1)
         c = (p_indexes == labels).squeeze()
-        for i in range(40):
+        for i in range(50):
             label = labels[i]
             class_correct[label] += c[i].item()
             class_total[label] += 1
         total += labels.size(0)
         correct += (p_indexes == labels).sum().item()
 
-print(f'Accuracy of the network with {EPOCH_NUM} epoch: {100 * correct / total}')
+mean_acc_result = f'Accuracy of the network with ' + \
+                  f'{len(test_set.classes)} classes ({train_set.size_per_class} el per class) ' + \
+                  f'on {EPOCH_NUM} epoch: {100 * correct / total:3.2f}%'
+print(mean_acc_result)
 
-with open(f'./../data/stat_e[{EPOCH_NUM}]_cl[{len(train_set.classes)}]_tr_s[{1000}].txt', 'wb') as stat_file:
-    s = f'Accuracy of the network with {EPOCH_NUM} epoch: {100 * correct / total}'
+with open(f'./../data/stat_e[{EPOCH_NUM}]_cl[{len(train_set.classes)}]_tr_s[{train_set.size_per_class}].txt',
+          'wb') as stat_file:
     b = bytearray()
-    b.extend(map(ord, s))
+    b.extend(map(ord, mean_acc_result))
     stat_file.write(b)
 
-    for target in test_set.classes:
+    for idx, target in enumerate(test_set.classes):
         symbol = chr(NISTDB19Dataset.folder_map['low_letters']['start'] + target)
-        s = f"Accuracy of '{symbol}': {100 * class_correct[target] / class_total[target]}"
+        s = f"Accuracy of '{test_set.classes[idx]['chr']}': {100 * class_correct[target] / class_total[target]:3.2f}%"
         b = bytearray()
         b.extend(map(ord, s))
         stat_file.write(b)

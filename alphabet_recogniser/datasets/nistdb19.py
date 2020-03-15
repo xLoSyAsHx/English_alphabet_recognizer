@@ -38,7 +38,7 @@ class NISTDB19Dataset(data.Dataset):
 
     def __init__(self, root_dir=None, train=True, download=False, data_type=None,
                  size_limit=0, size_limit_per_class=False, transform=None,
-                 use_preproc=False, verify=True):
+                 str_classes=None, use_preproc=False, verify=True):
         """
         Args:
             root_dir (string): Path to directory with 'by_class' folder
@@ -57,6 +57,7 @@ class NISTDB19Dataset(data.Dataset):
                 on a sample.
             use_preproc (bool, optional): Use by_class_preproc dir for data uploading
             verify (bool, optional): If false - md5 verification will be skipped
+            str_classes (str, optional): Specify class to upload. Example: '{a,b,c}'
         """
 
         if not self.folder_map.get(data_type):
@@ -64,18 +65,23 @@ class NISTDB19Dataset(data.Dataset):
                                repr(tuple(self.folder_map.keys())))
         self.data = []
         self.targets = []
-        self.classes = []
+        self.classes = {}
         self.data_type = data_type
         self.root_dir = os.path.expanduser(root_dir)
         self.train = train
         self.transform = transform
-        self.size_per_class = size_limit
 
-        if not size_limit_per_class:
-            self.size_per_class /= self.folder_map[data_type]['len']
+        arr_classes = str_classes[1:-1].split(',') if str_classes is not None else None
+        self.size_per_class = round(size_limit / len(arr_classes)) if arr_classes is not None \
+                         else self.folder_map[data_type]['len']
 
         if os.path.exists(self.root_dir):
-            self._process(download, data_type, verify, use_preproc)
+            self._process(
+                download,
+                data_type,
+                arr_classes,
+                verify,
+                use_preproc)
         else:
             raise RuntimeError("Path '" + self.root_dir + "' doesn't exist")
 
@@ -117,7 +123,6 @@ class NISTDB19Dataset(data.Dataset):
             with open(manifest_path, 'w') as manifest_file:
                 json.dump(data, manifest_file)
 
-
         with open(manifest_path, 'r') as manifest_file:
             manifest = json.load(manifest_file)
 
@@ -147,7 +152,8 @@ class NISTDB19Dataset(data.Dataset):
         if batch_name not in manifest:
             raise RuntimeError(f'{batch_name} does not found in manifest {manifest_path}')
 
-        if check_md5 and not check_integrity(os.path.join(path_to_batches, batch_name), md5=manifest[batch_name]['md5']):
+        if check_md5 and not check_integrity(os.path.join(path_to_batches, batch_name),
+                                             md5=manifest[batch_name]['md5']):
             raise RuntimeError(f'{batch_name} md5 mismatch')
 
         compression = manifest[batch_name]['compression']
@@ -155,19 +161,20 @@ class NISTDB19Dataset(data.Dataset):
             return compress_pickle.load(batch_file, compression=compression)
 
     @staticmethod
-    def download_and_preprocess(root_dir, data_type, check_md5=True):
+    def download_and_preprocess(root_dir, data_type, str_classes=None, check_md5=True):
         DS = NISTDB19Dataset
         DS.download(root_dir, True, check_md5)
-        sys.stdout.flush()
 
         preproc_pdath = os.path.join(root_dir, 'by_class_preproc')
         if not os.path.exists(preproc_pdath):
             os.mkdir(preproc_pdath)
 
+        arr_classes = str_classes[1:-1].split(',') if str_classes is not None else None
         start = DS.folder_map[data_type]['start']
-        ds_len = DS.folder_map[data_type]['len']
-        for class_idx in tqdm(range(start, start + ds_len),
-                              bar_format='{l_bar}{' + f'bar:{ds_len*2}' + '}{r_bar}{' + f'bar:-{ds_len*2}b' + '}'):
+        ds_len = DS.folder_map[data_type]['len'] if arr_classes is None else len(arr_classes)
+        idx_range = range(start, start + ds_len) if arr_classes is None else [ord(x) for x in arr_classes]
+        for class_idx in tqdm(idx_range,
+                              bar_format='{l_bar}{' + f'bar:{ds_len * 2}' + '}{r_bar}{' + f'bar:-{ds_len * 2}b' + '}'):
 
             path_to_img_dirs = os.path.join(root_dir, 'by_class', hex(class_idx)[2:])
             path_to_batches = os.path.join(preproc_pdath, hex(class_idx)[2:])
@@ -180,7 +187,7 @@ class NISTDB19Dataset(data.Dataset):
                 [x for x in source_dirs if os.path.isdir(x) and 'train' in x],
                 class_idx - start,
                 8000)
-            test_batches  = DS.__zip_folder_to_batches__(
+            test_batches = DS.__zip_folder_to_batches__(
                 [x for x in source_dirs if os.path.isdir(x) and 'train' not in x],
                 class_idx - start,
                 8000)
@@ -189,7 +196,7 @@ class NISTDB19Dataset(data.Dataset):
                 os.mkdir(path_to_batches)
 
             DS.__save_batches__(train_batches, path_to_batches, prefix='train')
-            DS.__save_batches__(test_batches,  path_to_batches, prefix='test')
+            DS.__save_batches__(test_batches, path_to_batches, prefix='test')
 
     @staticmethod
     def save_to_file(dataset, filepath, force_overwrite=False, compression='gzip'):
@@ -218,17 +225,17 @@ class NISTDB19Dataset(data.Dataset):
         arch_path = os.path.join(root_dir, NISTDB19Dataset.arch_name)
         if os.path.exists(arch_path):
             if not verify:
-                print('Verification was skipped')
+                print('Verification was skipped', flush=True)
                 return
 
             if check_integrity(arch_path, NISTDB19Dataset.md5_hash):
-                print('Files already downloaded and verified')
+                print('Files already downloaded and verified', flush=True)
                 return
             else:
                 ans = input('Archive corrupted. Delete and downloading it again [Y/n]? ')
                 if ans in ['Y', 'y', '']:
                     os.remove(arch_path)
-                    os.remove(arch_path[:len(arch_path)-4])
+                    os.remove(arch_path[:len(arch_path) - 4])
                 else:
                     raise RuntimeError("Archive corrupted. Remove it and try again.")
         elif not download:
@@ -254,14 +261,14 @@ class NISTDB19Dataset(data.Dataset):
                 return 1
         return 0
 
-    def _add_samples_from_batches(self, img_dir_path, pref, check_md5):
+    def _add_samples_from_batches(self, img_dir_path, prefix, target, check_md5):
         if img_dir_path is None:
             raise RuntimeError(f'Image dir path and target must be valid. \nGiven path: {img_dir_path}')
 
         newly_added = 0
         batch_names = os.listdir(img_dir_path)
         batch_names.remove('manifest.json')
-        for batch_name in [x for x in batch_names if pref in x]:
+        for batch_name in [x for x in batch_names if prefix in x]:
             batch = self.__load_batch__(batch_name, img_dir_path, check_md5)
 
             for sample in batch:
@@ -269,24 +276,24 @@ class NISTDB19Dataset(data.Dataset):
                     return
 
                 self.data.append(sample.image)
-                self.targets.append(sample.target)
+                self.targets.append(target)
                 newly_added += 1
 
                 if self.size_per_class != 0 and newly_added == self.size_per_class:
                     return
 
-    def _process(self, download, data_type, verify, use_preproc):
+    def _process(self, download, data_type, arr_classes, verify, use_preproc):
         NISTDB19Dataset.download(self.root_dir, download, verify)
-        sys.stdout.flush()
 
         start = self.folder_map[data_type]['start']
-        ds_len = NISTDB19Dataset.folder_map[data_type]['len']
-        for class_idx in tqdm(range(start, start + ds_len),
-                              bar_format='{l_bar}{' + f'bar:{ds_len*2}' + '}{r_bar}{' + f'bar:-{ds_len*2}b' + '}'):
+        ds_len = NISTDB19Dataset.folder_map[data_type]['len'] if arr_classes is None else len(arr_classes)
+        idx_range = range(start, start + ds_len) if arr_classes is None else [ord(x) for x in arr_classes]
+        for idx, class_idx in enumerate(tqdm(idx_range,
+                              bar_format='{l_bar}{' + f'bar:{ds_len * 2}' + '}{r_bar}{' + f'bar:-{ds_len * 2}b' + '}')):
+            size_before_add = len(self.data)
             if use_preproc:
                 path_to_img_dir = os.path.join(self.root_dir, 'by_class_preproc', hex(class_idx)[2:])
-                self._add_samples_from_batches(path_to_img_dir, 'train' if self.train else 'test', verify)
-                self.classes.append(self.targets[-1])
+                self._add_samples_from_batches(path_to_img_dir, 'train' if self.train else 'test', idx, verify)
             else:
                 newly_added = 0
                 class_folder_name = hex(class_idx)[2:]
@@ -298,12 +305,12 @@ class NISTDB19Dataset(data.Dataset):
                                                        'by_class',
                                                        class_folder_name,
                                                        hsf_name)
-                        if self._add_samples_from_dir(path_to_img_dir, chr(class_idx), newly_added) == 1:
+                        if self._add_samples_from_dir(path_to_img_dir, idx, newly_added) == 1:
                             break
                 else:
                     path_to_img_dir = os.path.join(self.root_dir,
-                                                    'by_class',
+                                                   'by_class',
                                                    class_folder_name,
                                                    'train_' + class_folder_name)
-                    self._add_samples_from_dir(path_to_img_dir, chr(class_idx), 0)
-                self.classes.append(self.targets[-1])
+                    self._add_samples_from_dir(path_to_img_dir, idx, 0)
+            self.classes[idx] = {'len': len(self.data) - size_before_add, 'chr': chr(class_idx)}
