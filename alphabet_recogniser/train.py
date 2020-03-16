@@ -40,7 +40,7 @@ if __name__ == "__main__":
     parser.check_compatibility(args)
 
 if args.use_preprocessed_data:
-    NISTDB19Dataset.download_and_preprocess(root_dir='./../data', data_type=args.data_type, str_classes=args.classes)
+    NISTDB19Dataset.download_and_preprocess(root_dir=args.root_dir, data_type=args.data_type, str_classes=args.classes)
 
 train_set = NISTDB19Dataset(root_dir=args.root_dir, data_type=args.data_type, train=True, download=True,
                             str_classes=args.classes, use_preproc=args.use_preprocessed_data,
