@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import torch
 import torch.nn as nn
@@ -22,6 +23,7 @@ def imshow(img):
     plt.show()
 
 
+print(f"sys version: {sys.version_info}")
 print(f"torch version: {torch.__version__}")
 print(f"torchvision version: {torchvision.__version__}")
 print(f"alphabet_recogniser version: {alphabet_recogniser.__version__}\n{'#' * 40}")
@@ -117,7 +119,7 @@ with torch.no_grad():
         outputs = net(images)
         p_values, p_indexes = torch.max(outputs.data, 1)
         c = (p_indexes == labels).squeeze()
-        for i in range(50):
+        for i in range(len(labels)):
             label = labels[i]
             class_correct[label] += c[i].item()
             class_total[label] += 1

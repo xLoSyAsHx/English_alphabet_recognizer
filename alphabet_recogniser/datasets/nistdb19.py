@@ -1,5 +1,4 @@
 import os
-import sys
 import json
 import compress_pickle
 import numpy as np
@@ -37,7 +36,7 @@ class NISTDB19Dataset(data.Dataset):
             self.target = target
 
     def __init__(self, root_dir=None, train=True, download=False, data_type=None,
-                 size_limit=0, size_limit_per_class=False, transform=None,
+                 size_limit=0, transform=None,
                  str_classes=None, use_preproc=False, verify=True):
         """
         Args:
@@ -70,16 +69,13 @@ class NISTDB19Dataset(data.Dataset):
         self.root_dir = os.path.expanduser(root_dir)
         self.train = train
         self.transform = transform
-
-        arr_classes = str_classes[1:-1].split(',') if str_classes is not None else None
-        self.size_per_class = round(size_limit / len(arr_classes)) if arr_classes is not None \
-                         else self.folder_map[data_type]['len']
+        self.size_per_class = size_limit
 
         if os.path.exists(self.root_dir):
             self._process(
                 download,
                 data_type,
-                arr_classes,
+                str_classes[1:-1].split(',') if str_classes is not None else None,
                 verify,
                 use_preproc)
         else:
@@ -100,8 +96,7 @@ class NISTDB19Dataset(data.Dataset):
     def __zip_folder_to_batches__(sourse_dirs, target, size_per_batch):
 
         idx = 0
-        batches = []
-        batches.append(np.ndarray(size_per_batch, dtype=NISTDB19Dataset.Sample))
+        batches = [np.ndarray(size_per_batch, dtype=NISTDB19Dataset.Sample)]
         for dir_path in sourse_dirs:
             for filename in os.listdir(dir_path):
                 if idx == size_per_batch - 1:
@@ -132,7 +127,7 @@ class NISTDB19Dataset(data.Dataset):
                 continue
 
             with open(os.path.join(path_to_batches, batch_name), 'wb') as batch_file:
-                compress_pickle.dump(batch, batch_file, compression=compression)
+                compress_pickle.dump(batch, batch_file, compression=compression, protocol=4)
 
             md5 = calculate_md5(os.path.join(path_to_batches, batch_name))
             manifest[batch_name] = {'md5': md5, 'compression': compression}
