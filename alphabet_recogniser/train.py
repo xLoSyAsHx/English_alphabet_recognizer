@@ -59,7 +59,7 @@ test_loader = torch.utils.data.DataLoader(test_set, batch_size=50,
 net = EngAlphabetRecognizer96(num_classes=len(train_set.classes))
 
 device = torch.device('cpu')
-if torch.cuda.is_available() and False:
+if torch.cuda.is_available():
     print('\nCuda is available\n\n')
     device = torch.device('cuda')
     net.to(device)
