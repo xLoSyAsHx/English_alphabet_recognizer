@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import math
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -77,10 +78,10 @@ else:
 
     if train_set.size_per_class is not None:
         num_batches = train_set.size_per_class * len(train_set.classes) / train_loader.batch_size
-        size_to_check_loss = round(num_batches / 10) + 1
+        size_to_check_loss = math.ceil(num_batches / 10) + 1
     else:
         num_batches = 1000 * len(train_set.classes) / train_loader.batch_size
-        size_to_check_loss = round(num_batches / 10) + 1
+        size_to_check_loss = math.ceil(num_batches / 10) + 1
 
     loss_values = []
     start_time = time.perf_counter()
