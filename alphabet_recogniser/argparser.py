@@ -33,7 +33,9 @@ class ArgParser:
                                      help="Path to data folder")
             self.parser.add_argument('-e', type=ArgParser.__positive_int__, required=True,
                                      help="Number of Epoches")
-            self.parser.add_argument('-data-type', type=str, choices=NISTDB19Dataset.folder_map.keys(),
+            self.parser.add_argument('-batch-size', type=ArgParser.__positive_int__, required=True,
+                                     help="batch_size value for DataLoader")
+            self.parser.add_argument('-data-type', type=str, choices=NISTDB19Dataset.folder_map.keys(), required=True,
                                      help=f"Specify data type to use. Available types: {NISTDB19Dataset.folder_map.keys()}")
 
 
