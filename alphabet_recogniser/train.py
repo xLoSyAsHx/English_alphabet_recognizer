@@ -47,13 +47,13 @@ if args.use_preprocessed_data:
 train_set = NISTDB19Dataset(root_dir=args.root_dir, data_type=args.data_type, train=True, download=True,
                             str_classes=args.classes, use_preproc=args.use_preprocessed_data,
                             transform=transform, size_limit=args.train_limit)
-train_loader = torch.utils.data.DataLoader(train_set, batch_size=50,
+train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size,
                                            shuffle=args.shuffle_train, num_workers=0)
 
 test_set = NISTDB19Dataset(root_dir=args.root_dir, data_type=args.data_type, train=False, download=True,
                            str_classes=args.classes, use_preproc=args.use_preprocessed_data,
                            transform=transform, size_limit=args.test_limit)
-test_loader = torch.utils.data.DataLoader(test_set, batch_size=50,
+test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size,
                                           shuffle=args.shuffle_test, num_workers=0)
 
 net = EngAlphabetRecognizer96(num_classes=len(train_set.classes))
@@ -75,6 +75,13 @@ else:
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
+    if train_set.size_per_class is not None:
+        num_batches = train_set.size_per_class * len(train_set.classes) / train_loader.batch_size
+        size_to_check_loss = round(num_batches / 10) + 1
+    else:
+        num_batches = 1000 * len(train_set.classes) / train_loader.batch_size
+        size_to_check_loss = round(num_batches / 10) + 1
+
     loss_values = []
     start_time = time.perf_counter()
     for epoch in range(EPOCH_NUM):
@@ -94,7 +101,7 @@ else:
 
             # print statistics
             running_loss += loss.item()
-            if i % 5 == 4:  # print every 50 mini-batches
+            if i % size_to_check_loss == size_to_check_loss - 1:  # print every size_to_check_loss mini-batches
                 print(f'[{epoch + 1}, {i + 1}] loss: {running_loss / i:1.3f}')
         print(f'Epoch {epoch}   time: {time.perf_counter() - start_time:6.0f} seconds')
 
@@ -102,7 +109,7 @@ else:
     x = np.arange(0, len(loss_values))
     fig, ax = plt.subplots(figsize=(15, 15))
     ax.grid()
-    ax.set(xlabel='batch №. (batch_size=50)', ylabel='loss',
+    ax.set(xlabel=f'batch №. (batch_size={train_loader.batch_size})', ylabel='loss',
            title='Loss')
     ax.plot(x, loss_values)
     fig.savefig(f"./../data/loss_e[{EPOCH_NUM}]_cl[{len(train_set.classes)}]_tr_s[{train_set.size_per_class}].png", dpi=400)
