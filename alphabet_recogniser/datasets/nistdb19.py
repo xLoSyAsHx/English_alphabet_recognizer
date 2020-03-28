@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import compress_pickle
 import numpy as np
@@ -72,6 +73,7 @@ class NISTDB19Dataset(data.Dataset):
         self.size_per_class = size_limit
 
         if os.path.exists(self.root_dir):
+            print(f"\nLoad {'train' if self.train else 'test'} dataset:")
             self._process(
                 download,
                 data_type,
@@ -157,6 +159,7 @@ class NISTDB19Dataset(data.Dataset):
 
     @staticmethod
     def download_and_preprocess(root_dir, data_type, str_classes=None, check_md5=True):
+        print(f"Download and preprocess '{data_type}':")
         DS = NISTDB19Dataset
         DS.download(root_dir, True, check_md5)
 
@@ -169,6 +172,7 @@ class NISTDB19Dataset(data.Dataset):
         ds_len = DS.folder_map[data_type]['len'] if arr_classes is None else len(arr_classes)
         idx_range = range(start, start + ds_len) if arr_classes is None else [ord(x) for x in arr_classes]
         for class_idx in tqdm(idx_range,
+                              file=sys.stdout,
                               bar_format='{l_bar}{' + f'bar:{ds_len * 2}' + '}{r_bar}{' + f'bar:-{ds_len * 2}b' + '}'):
 
             path_to_img_dirs = os.path.join(root_dir, 'by_class', hex(class_idx)[2:])
@@ -284,6 +288,7 @@ class NISTDB19Dataset(data.Dataset):
         ds_len = NISTDB19Dataset.folder_map[data_type]['len'] if arr_classes is None else len(arr_classes)
         idx_range = range(start, start + ds_len) if arr_classes is None else [ord(x) for x in arr_classes]
         for idx, class_idx in enumerate(tqdm(idx_range,
+                              file=sys.stdout,
                               bar_format='{l_bar}{' + f'bar:{ds_len * 2}' + '}{r_bar}{' + f'bar:-{ds_len * 2}b' + '}')):
             size_before_add = len(self.data)
             if use_preproc:
