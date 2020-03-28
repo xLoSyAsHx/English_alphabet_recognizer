@@ -8,6 +8,9 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
+
 import alphabet_recogniser
 from alphabet_recogniser.datasets import NISTDB19Dataset
 from alphabet_recogniser.models import EngAlphabetRecognizer96
@@ -15,6 +18,120 @@ from alphabet_recogniser.argparser import ArgParser
 
 import matplotlib.pyplot as plt
 import numpy as np
+from datetime import datetime
+
+
+class Globals:
+    def __init__(self):
+        self.args = None
+        self.writer = None
+        self.log_pref = None
+
+        self.transform = None
+        self.classes = None
+        self.train_size_per_class = None
+        self.test_size_per_class = None
+
+        self.device = None
+        self.criterion = None
+        self.epoch_num = None
+        self.path_to_model = None
+G = Globals()
+
+
+def log(tag, text, glogal_step=0):
+    print(text)
+    G.writer.add_text(tag, text, glogal_step)
+
+
+def setup_global_vars():
+    G.train_size_per_class = G.args.train_limit
+    G.test_size_per_class = G.args.test_limit
+
+    G.criterion = nn.CrossEntropyLoss()
+    G.device = torch.device('cuda')
+    G.epoch_num = G.args.e
+    G.path_to_model = 'cifar_net.torchmodel'
+
+    G.log_pref = datetime.now().strftime('%Y_%B%d_%H-%M-%S')
+    G.writer = SummaryWriter(log_dir=f"./../runs/{G.log_pref}"
+                                     f"_e[{G.epoch_num}]"
+                                     f"_c[{G.classes}]"
+                                     f"_tr_s[{G.train_size_per_class}]"
+                                     f"_t_s[{G.test_size_per_class}]")
+
+
+def get_data_loaders():
+    if hasattr(get_data_loaders, 'train'):
+        return get_data_loaders.train, get_data_loaders.test
+
+    if G.args.use_preprocessed_data:
+        NISTDB19Dataset.download_and_preprocess(root_dir=G.args.root_dir, data_type=G.args.data_type,
+                                                str_classes=G.args.classes)
+
+    train_set = NISTDB19Dataset(root_dir=G.args.root_dir, data_type=G.args.data_type, train=True, download=True,
+                                str_classes=G.args.classes, use_preproc=G.args.use_preprocessed_data,
+                                transform=G.transform, size_limit=G.args.train_limit)
+    get_data_loaders.train = DataLoader(train_set, batch_size=G.args.batch_size,
+                                        shuffle=G.args.shuffle_train, num_workers=0)
+
+    test_set = NISTDB19Dataset(root_dir=G.args.root_dir, data_type=G.args.data_type, train=False, download=True,
+                               str_classes=G.args.classes, use_preproc=G.args.use_preprocessed_data,
+                               transform=G.transform, size_limit=G.args.test_limit)
+    get_data_loaders.test = DataLoader(test_set, batch_size=G.args.batch_size,
+                                       shuffle=G.args.shuffle_test, num_workers=0)
+
+    G.classes = train_set.classes
+    return get_data_loaders.train, get_data_loaders.test
+
+
+def train_network(net):
+    train_loader, test_loader = get_data_loaders()
+
+    if os.path.exists(G.path_to_model) and False:
+        net.load_state_dict(torch.load(G.path_to_model))
+    else:
+        optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+
+        if G.train_size_per_class is not None:
+            num_batches = G.train_size_per_class * len(G.classes) / train_loader.batch_size
+            size_to_check_loss = math.ceil(num_batches / 10) + 1
+        else:
+            num_batches = 1000 * len(G.classes) / train_loader.batch_size
+            size_to_check_loss = math.ceil(num_batches / 10) + 1
+
+        loss_values = []
+        start_time = time.perf_counter()
+        for epoch in range(G.epoch_num):
+            net.train()
+            running_loss = 0.0
+            for i, data in enumerate(train_loader, 0):
+                inputs, labels = data[0].to(G.device), data[1].to(G.device)
+
+                optimizer.zero_grad()
+                outputs = net(inputs)
+                loss = G.criterion(outputs, labels)
+                with torch.no_grad():
+                    loss_values.append(loss.item())
+                    G.writer.add_scalar('Loss/train', loss.item(), G.epoch_num * epoch + i)
+                loss.backward()
+                optimizer.step()
+
+                # print statistics
+                running_loss += loss.item()
+                if i % size_to_check_loss == size_to_check_loss - 1:  # print every size_to_check_loss mini-batches
+                    log('train_logs', f'[{epoch + 1}, {i + 1}] loss: {running_loss / i:1.3f}')
+            log('train_logs', f'Epoch {epoch}   time: {time.perf_counter() - start_time:6.0f} seconds')
+
+        log('train_logs', f'Finished Training {time.perf_counter() - start_time:6.0f} seconds')
+        x = np.arange(0, len(loss_values))
+        fig, ax = plt.subplots(figsize=(15, 15))
+        ax.grid()
+        ax.set(xlabel=f'batch №. (batch_size={train_loader.batch_size})', ylabel='loss', title='Loss')
+        ax.plot(x, loss_values)
+        fig.savefig(
+            f'./../data/loss_e[{G.epoch_num}]_cl[{len(G.classes)}]_tr_s[{G.train_size_per_class}].png',
+            dpi=400)
 
 
 def imshow(img):
@@ -24,131 +141,83 @@ def imshow(img):
     plt.show()
 
 
-print(f"sys version: {sys.version_info}")
-print(f"torch version: {torch.__version__}")
-print(f"torchvision version: {torchvision.__version__}")
-print(f"alphabet_recogniser version: {alphabet_recogniser.__version__}\n{'#' * 40}")
+def main():
+    parser = ArgParser.get_instance()
+    G.args = parser.parse_args()
+    parser.check_compatibility(G.args)
 
-transform = transforms.Compose(
-    [transforms.CenterCrop(112),
-     transforms.RandomCrop(96),
-     transforms.Grayscale(num_output_channels=1),
-     transforms.ToTensor(),
-     transforms.Normalize((0.5,), (0.5,))
-     ])
+    setup_global_vars()  # All, except transform
+    G.transform = transforms.Compose(
+        [transforms.CenterCrop(112),
+         transforms.RandomCrop(96),
+         transforms.Grayscale(num_output_channels=1),
+         transforms.ToTensor(),
+         transforms.Normalize((0.5,), (0.5,))])
+
+    log('common', f"sys version: {sys.version_info}")
+    log('common', f"torch version: {torch.__version__}")
+    log('common', f"torchvision version: {torchvision.__version__}")
+    log('common', f"alphabet_recogniser version: {alphabet_recogniser.__version__}")
+    print(f"{'#' * 40}\n\n")
+
+    train_loader, test_loader = get_data_loaders()
+    net = EngAlphabetRecognizer96(num_classes=len(G.classes))
+
+
+    # imshow(torchvision.utils.make_grid(iter(train_loader).next()[0]))
+
+    if torch.cuda.is_available():
+        log('common', 'Cuda is available\n')
+    else:
+        log('common', 'Cuda is unavailable\n')
+        G.device = torch.device('cpu')
+
+    net.to(G.device)
+    train_network(net)
+
+    correct = 0
+    total = 0
+    class_correct = np.zeros(len(G.classes), dtype=int)
+    class_total = np.zeros(len(G.classes), dtype=int)
+    with torch.no_grad():
+        criterion = nn.CrossEntropyLoss()
+        for i, data in enumerate(test_loader):
+            images, labels = data[0].to(G.device), data[1].to(G.device)
+
+            outputs = net(images)
+            G.writer.add_scalar('Loss/test', criterion(outputs, labels).item(), i)
+
+            p_values, p_indexes = torch.max(outputs.data, 1)
+            c = (p_indexes == labels).squeeze()
+            for i in range(len(labels)):
+                label = labels[i]
+                class_correct[label] += c[i].item()
+                class_total[label] += 1
+            total += labels.size(0)
+            correct += (p_indexes == labels).sum().item()
+
+    mean_acc_result = f'Accuracy of the network with ' + \
+                      f'{len(G.classes)} classes ({G.train_size_per_class} el per class) ' + \
+                      f'on {G.epoch_num} epoch: {100 * correct / total:3.2f}%'
+
+    log('test_accuracy', mean_acc_result)
+
+    with open(f'./../data/stat_e[{G.epoch_num}]_cl[{len(G.classes)}]_tr_s[{G.train_size_per_class}].txt',
+              'wb') as stat_file:
+        b = bytearray()
+        b.extend(map(ord, mean_acc_result))
+        stat_file.write(b)
+
+        for idx, target in enumerate(G.classes):
+            G.writer.add_histogram('Accuracy per class', )
+
+            s = f"Accuracy of '{G.classes[idx]['chr']}': {100 * class_correct[target] / class_total[target]:3.2f}%"
+            b = bytearray()
+            b.extend(map(ord, s + '\n'))
+            stat_file.write(b)
+            log('test_accuracy_per_class', s)
+    G.writer.close()
+
 
 if __name__ == "__main__":
-    parser = ArgParser.get_instance()
-    args = parser.parse_args()
-    parser.check_compatibility(args)
-
-if args.use_preprocessed_data:
-    NISTDB19Dataset.download_and_preprocess(root_dir=args.root_dir, data_type=args.data_type, str_classes=args.classes)
-
-train_set = NISTDB19Dataset(root_dir=args.root_dir, data_type=args.data_type, train=True, download=True,
-                            str_classes=args.classes, use_preproc=args.use_preprocessed_data,
-                            transform=transform, size_limit=args.train_limit)
-train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size,
-                                           shuffle=args.shuffle_train, num_workers=0)
-
-test_set = NISTDB19Dataset(root_dir=args.root_dir, data_type=args.data_type, train=False, download=True,
-                           str_classes=args.classes, use_preproc=args.use_preprocessed_data,
-                           transform=transform, size_limit=args.test_limit)
-test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size,
-                                          shuffle=args.shuffle_test, num_workers=0)
-
-net = EngAlphabetRecognizer96(num_classes=len(train_set.classes))
-
-device = torch.device('cpu')
-if torch.cuda.is_available():
-    print('\nCuda is available\n\n')
-    device = torch.device('cuda')
-    net.to(device)
-else:
-    print('\nCuda is unavailable\n\n')
-
-PATH = 'cifar_net.torchmodel'
-
-EPOCH_NUM = args.e
-if os.path.exists(PATH) and False:
-    net.load_state_dict(torch.load(PATH))
-else:
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
-
-    if train_set.size_per_class is not None:
-        num_batches = train_set.size_per_class * len(train_set.classes) / train_loader.batch_size
-        size_to_check_loss = math.ceil(num_batches / 10) + 1
-    else:
-        num_batches = 1000 * len(train_set.classes) / train_loader.batch_size
-        size_to_check_loss = math.ceil(num_batches / 10) + 1
-
-    loss_values = []
-    start_time = time.perf_counter()
-    for epoch in range(EPOCH_NUM):
-        net.train()
-        running_loss = 0.0
-        for i, data in enumerate(train_loader, 0):
-            inputs, labels = data[0].to(device), data[1].to(device)
-
-            optimizer.zero_grad()
-
-            outputs = net(inputs)
-            loss = criterion(outputs, labels)
-            with torch.no_grad():
-                loss_values.append(loss.item())
-            loss.backward()
-            optimizer.step()
-
-            # print statistics
-            running_loss += loss.item()
-            if i % size_to_check_loss == size_to_check_loss - 1:  # print every size_to_check_loss mini-batches
-                print(f'[{epoch + 1}, {i + 1}] loss: {running_loss / i:1.3f}')
-        print(f'Epoch {epoch}   time: {time.perf_counter() - start_time:6.0f} seconds')
-
-    print(f'Finished Training {time.perf_counter() - start_time:6.0f} seconds')
-    x = np.arange(0, len(loss_values))
-    fig, ax = plt.subplots(figsize=(15, 15))
-    ax.grid()
-    ax.set(xlabel=f'batch №. (batch_size={train_loader.batch_size})', ylabel='loss',
-           title='Loss')
-    ax.plot(x, loss_values)
-    fig.savefig(f"./../data/loss_e[{EPOCH_NUM}]_cl[{len(train_set.classes)}]_tr_s[{train_set.size_per_class}].png", dpi=400)
-    step = round(len(loss_values) / (train_set.size_per_class / train_loader.batch_size))
-
-correct = 0
-total = 0
-class_correct = np.zeros(len(train_set.classes), dtype=int)
-class_total = np.zeros(len(train_set.classes), dtype=int)
-with torch.no_grad():
-    for data in test_loader:
-        images, labels = data[0].to(device), data[1].to(device)
-
-        outputs = net(images)
-        p_values, p_indexes = torch.max(outputs.data, 1)
-        c = (p_indexes == labels).squeeze()
-        for i in range(len(labels)):
-            label = labels[i]
-            class_correct[label] += c[i].item()
-            class_total[label] += 1
-        total += labels.size(0)
-        correct += (p_indexes == labels).sum().item()
-
-mean_acc_result = f'Accuracy of the network with ' + \
-                  f'{len(test_set.classes)} classes ({train_set.size_per_class} el per class) ' + \
-                  f'on {EPOCH_NUM} epoch: {100 * correct / total:3.2f}%'
-print(mean_acc_result)
-
-with open(f'./../data/stat_e[{EPOCH_NUM}]_cl[{len(train_set.classes)}]_tr_s[{train_set.size_per_class}].txt',
-          'wb') as stat_file:
-    b = bytearray()
-    b.extend(map(ord, mean_acc_result))
-    stat_file.write(b)
-
-    for idx, target in enumerate(test_set.classes):
-        symbol = chr(NISTDB19Dataset.folder_map['low_letters']['start'] + target)
-        s = f"Accuracy of '{test_set.classes[idx]['chr']}': {100 * class_correct[target] / class_total[target]:3.2f}%"
-        b = bytearray()
-        b.extend(map(ord, s + '\n'))
-        stat_file.write(b)
-        print(s)
+    main()
