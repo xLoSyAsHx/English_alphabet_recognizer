@@ -149,6 +149,6 @@ with open(f'./../data/stat_e[{EPOCH_NUM}]_cl[{len(train_set.classes)}]_tr_s[{tra
         symbol = chr(NISTDB19Dataset.folder_map['low_letters']['start'] + target)
         s = f"Accuracy of '{test_set.classes[idx]['chr']}': {100 * class_correct[target] / class_total[target]:3.2f}%"
         b = bytearray()
-        b.extend(map(ord, s))
+        b.extend(map(ord, s + '\n'))
         stat_file.write(b)
         print(s)
