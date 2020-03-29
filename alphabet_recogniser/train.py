@@ -85,6 +85,16 @@ def get_data_loaders():
     return get_data_loaders.train, get_data_loaders.test
 
 
+def upload_net_graph(net):
+    if G.args.t_images is None:
+        G.writer.add_graph(net)
+
+    _, test_loader = get_data_loaders()
+    images = iter(test_loader).next()[0][:G.args.t_images]
+    G.writer.add_image('MNIST19 preprocessed samples', torchvision.utils.make_grid(images))
+    G.writer.add_graph(net, images)
+
+
 def train_network(net):
     train_loader, test_loader = get_data_loaders()
 
@@ -163,8 +173,7 @@ def main():
     train_loader, test_loader = get_data_loaders()
     net = EngAlphabetRecognizer96(num_classes=len(G.classes))
 
-
-    # imshow(torchvision.utils.make_grid(iter(train_loader).next()[0]))
+    # imshow(torchvision.utils.make_grid(iter(test_loader).next()[0][:80]))
 
     if torch.cuda.is_available():
         log('common', 'Cuda is available\n')
@@ -174,6 +183,7 @@ def main():
 
     net.to(G.device)
     train_network(net)
+    upload_net_graph(net)
 
     correct = 0
     total = 0
@@ -209,7 +219,7 @@ def main():
         stat_file.write(b)
 
         for idx, target in enumerate(G.classes):
-            G.writer.add_histogram('Accuracy per class', )
+            # G.writer.add_histogram('Accuracy per class', )
 
             s = f"Accuracy of '{G.classes[idx]['chr']}': {100 * class_correct[target] / class_total[target]:3.2f}%"
             b = bytearray()
