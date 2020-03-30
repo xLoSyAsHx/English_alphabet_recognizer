@@ -2,21 +2,33 @@
 
 [![Build Status](https://travis-ci.com/xLoSyAsHx/HSE_ML_alphabet_recognition.svg?branch=master)](https://travis-ci.com/xLoSyAsHx/HSE_ML_alphabet_recognition)
 
-**Table of Contents**
-
-[TOCM]
-
-[TOC]
 
 Neural Network model for English alphabet recognition. Deep learning engine - PyTorch
 
-## Current network accuracy
-### English low letters
+
+Table of contents
+=================
+
+
+   * [Head](#hse_ml_alphabet_recognition)
+   * [Table of contents](#table-of-contents)
+   * [Current network accuracy](#current-network-accuracy)
+      * [English low letters](#english-low-letters)
+   * [How to launch training](#how-to-launch-training)
+   * [Tensorboard](##tensorboard)
+   * [MNIST19 preprocessed sample](##mnist1919-preprocessed-sample)
+
+
+# Current network accuracy
+
+## English low letters
+
 82.52% per 15 classes
 
 -train-limit 2000 -test-limit 1000
 
-## How to launch training
+# How to launch training
+-
 
     # clone project
     cd HSE_ML_alphabet_recognition
@@ -25,4 +37,9 @@ Neural Network model for English alphabet recognition. Deep learning engine - Py
     tensorboard --logdir=runs
 
 
+# Tensorboard
 Link to tensorboard runs folder: https://drive.google.com/drive/folders/1WoD2z5Qg3KR-ASyUJnsuVkLzEGuTov0r?usp=sharing
+
+
+# MNIST19 preprocessed samples
+![Samples](https://github.com/xLoSyAsHx/HSE_ML_alphabet_recognition/blob/master/misc/images/MNIST19_preprocessed_samples.png)
