@@ -31,8 +31,11 @@ setup(
         'compress-pickle>=1.1.1',
         'Pillow',
         'scikit-image',
+        'scikit-learn',
+        'tensorboard>=2.0.0',
         'numpy',
         'tqdm',
+        'matplotlib'
     ],
     platforms=['Windows 10'],
     license='NO'
