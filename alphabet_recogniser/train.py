@@ -11,14 +11,16 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
+import matplotlib.pyplot as plt
+import numpy as np
+from datetime import datetime
+
+
 import alphabet_recogniser
 from alphabet_recogniser.datasets import NISTDB19Dataset
 from alphabet_recogniser.models import EngAlphabetRecognizer96
 from alphabet_recogniser.argparser import ArgParser
-
-import matplotlib.pyplot as plt
-import numpy as np
-from datetime import datetime
+from alphabet_recogniser.utils import log_conf_matrix
 
 
 class Globals:
@@ -87,12 +89,50 @@ def get_data_loaders():
 
 def upload_net_graph(net):
     if G.args.t_images is None:
-        G.writer.add_graph(net)
+        with torch.no_grad():
+            net.to('cpu')
+            G.writer.add_graph(net)
+            net.to(G.device)
 
     _, test_loader = get_data_loaders()
     images = iter(test_loader).next()[0][:G.args.t_images]
-    G.writer.add_image('MNIST19 preprocessed samples', torchvision.utils.make_grid(images))
-    G.writer.add_graph(net, images)
+    with torch.no_grad():
+        images = images.to('cpu')
+        net.to('cpu')
+        G.writer.add_image('MNIST19 preprocessed samples', torchvision.utils.make_grid(images))
+        G.writer.add_graph(net, images)
+        net.to(G.device)
+
+
+def calculate_and_log_conf_matrix(net, epoch):
+    _, test_loader = get_data_loaders()
+
+    correct = 0
+    total = 0
+    class_correct = np.zeros(len(G.classes), dtype=int)
+    class_total = np.zeros(len(G.classes), dtype=int)
+    with torch.no_grad():
+        pred_list = torch.zeros(0, dtype=torch.long, device='cpu')
+        lbl_list = torch.zeros(0, dtype=torch.long, device='cpu')
+        criterion = nn.CrossEntropyLoss()
+        for i, data in enumerate(test_loader):
+            images, labels = data[0].to(G.device), data[1].to(G.device)
+
+            outputs = net(images)
+            G.writer.add_scalar('Loss/test', criterion(outputs, labels).item(), epoch)
+
+            p_values, p_indexes = torch.max(outputs.data, 1)
+            c = (p_indexes == labels).squeeze()
+            for i in range(len(labels)):
+                label = labels[i]
+                class_correct[label] += c[i].item()
+                class_total[label] += 1
+            total += labels.size(0)
+            correct += (p_indexes == labels).sum().item()
+
+            pred_list = torch.cat([pred_list, p_indexes.view(-1).cpu()])
+            lbl_list = torch.cat([lbl_list, labels.view(-1).cpu()])
+        log_conf_matrix(G, lbl_list, pred_list, [G.classes[key]['chr'] for key in G.classes], epoch)
 
 
 def train_network(net):
@@ -112,6 +152,7 @@ def train_network(net):
 
         loss_values = []
         start_time = time.perf_counter()
+        log_time = 0.0
         for epoch in range(G.epoch_num):
             net.train()
             running_loss = 0.0
@@ -131,9 +172,14 @@ def train_network(net):
                 running_loss += loss.item()
                 if i % size_to_check_loss == size_to_check_loss - 1:  # print every size_to_check_loss mini-batches
                     log('train_logs', f'[{epoch + 1}, {i + 1}] loss: {running_loss / i:1.3f}')
-            log('train_logs', f'Epoch {epoch}   time: {time.perf_counter() - start_time:6.0f} seconds')
+            log('train_logs', f'Epoch {epoch}   time: {time.perf_counter() - start_time - log_time:6.0f} seconds')
 
-        log('train_logs', f'Finished Training {time.perf_counter() - start_time:6.0f} seconds')
+            if epoch % 10 == 9:
+                start_time2 = time.perf_counter()
+                calculate_and_log_conf_matrix(net, epoch)
+                log_time += time.perf_counter() - start_time2
+
+        log('train_logs', f'Finished Training {time.perf_counter() - start_time - log_time:6.0f} seconds')
         x = np.arange(0, len(loss_values))
         fig, ax = plt.subplots(figsize=(15, 15))
         ax.grid()
@@ -142,13 +188,6 @@ def train_network(net):
         fig.savefig(
             f'./../data/loss_e[{G.epoch_num}]_cl[{len(G.classes)}]_tr_s[{G.train_size_per_class}].png',
             dpi=400)
-
-
-def imshow(img):
-    img = img / 0.5 + 0.5  # unnormalize
-    npimg = img.numpy()
-    plt.imshow(np.transpose(npimg, (1, 2, 0)))
-    plt.show()
 
 
 def main():
@@ -190,12 +229,14 @@ def main():
     class_correct = np.zeros(len(G.classes), dtype=int)
     class_total = np.zeros(len(G.classes), dtype=int)
     with torch.no_grad():
+        pred_list = torch.zeros(0, dtype=torch.long, device='cpu')
+        lbl_list = torch.zeros(0, dtype=torch.long, device='cpu')
         criterion = nn.CrossEntropyLoss()
         for i, data in enumerate(test_loader):
             images, labels = data[0].to(G.device), data[1].to(G.device)
 
             outputs = net(images)
-            G.writer.add_scalar('Loss/test', criterion(outputs, labels).item(), i)
+            G.writer.add_scalar('Loss/test', criterion(outputs, labels).item(), G.epoch_num + 1)
 
             p_values, p_indexes = torch.max(outputs.data, 1)
             c = (p_indexes == labels).squeeze()
@@ -206,12 +247,14 @@ def main():
             total += labels.size(0)
             correct += (p_indexes == labels).sum().item()
 
+            pred_list = torch.cat([pred_list, p_indexes.view(-1).cpu()])
+            lbl_list = torch.cat([lbl_list, labels.view(-1).cpu()])
+        log_conf_matrix(G, lbl_list, pred_list, [G.classes[key]['chr'] for key in G.classes], G.epoch_num + 1)
+
     mean_acc_result = f'Accuracy of the network with ' + \
                       f'{len(G.classes)} classes ({G.train_size_per_class} el per class) ' + \
                       f'on {G.epoch_num} epoch: {100 * correct / total:3.2f}%'
-
     log('test_accuracy', mean_acc_result)
-
     with open(f'./../data/stat_e[{G.epoch_num}]_cl[{len(G.classes)}]_tr_s[{G.train_size_per_class}].txt',
               'wb') as stat_file:
         b = bytearray()
