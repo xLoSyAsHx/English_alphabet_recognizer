@@ -11,7 +11,6 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
 
@@ -146,16 +145,10 @@ def train_network(net):
     else:
         optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
-        if G.train_size_per_class is not None:
-            num_batches = G.train_size_per_class * len(G.classes) / train_loader.batch_size
-            size_to_check_loss = math.ceil(num_batches / 10) + 1
-        else:
-            num_batches = 1000 * len(G.classes) / train_loader.batch_size
-            size_to_check_loss = math.ceil(num_batches / 10) + 1
-
         loss_values = []
         start_time = time.perf_counter()
         log_time = 0.0
+        size_to_check_loss = math.floor(len(train_loader) / 5) + 1
         for epoch in range(G.epoch_num):
             net.train()
             running_loss = 0.0
@@ -174,7 +167,8 @@ def train_network(net):
                 # print statistics
                 running_loss += loss.item()
                 if i % size_to_check_loss == size_to_check_loss - 1:  # print every size_to_check_loss mini-batches
-                    print(f'[{epoch + 1}, {i + 1}] loss: {running_loss / i:1.3f}')
+                    print(f'[{epoch + 1}, {i + 1:3d}] loss: {running_loss / i:1.3f}')
+            print(f'[{epoch + 1}, {len(train_loader) - 1:3d}] loss: {running_loss / (len(train_loader) - 1):1.3f}')
             log('train_logs', f'Epoch {epoch}   time: {time.perf_counter() - start_time - log_time:6.0f} seconds', epoch + 1)
 
             if epoch % G.args.t_cm_granularity == 0 and epoch != 0:
