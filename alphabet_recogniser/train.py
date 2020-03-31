@@ -55,10 +55,13 @@ def setup_global_vars():
     G.epoch_num = G.args.e
     G.path_to_model = 'cifar_net.torchmodel'
 
+    num_classes = len(G.args.classes[1:-1].split(',')) if G.args.classes is not None \
+             else NISTDB19Dataset.folder_map[G.args.data_type]['len']
+
     G.log_pref = datetime.now().strftime('%Y_%B%d_%H-%M-%S')
-    G.writer = SummaryWriter(log_dir=f"./../runs2/{G.log_pref}"
+    G.writer = SummaryWriter(log_dir=f"./../runs/{G.log_pref}"
                                      f"_e[{G.epoch_num}]"
-                                     f"_c[{len(G.args.classes[1:-1].split(','))}]"
+                                     f"_c[{num_classes}]"
                                      f"_tr_s[{G.train_size_per_class}]"
                                      f"_t_s[{G.test_size_per_class}]")
 
@@ -212,6 +215,12 @@ def main():
     else:
         log('common', 'Cuda is unavailable\n')
         G.device = torch.device('cpu')
+
+    if G.args.classes is None:
+        G.args.classes = '{'
+        for el in G.classes.values():
+            G.args.classes += el['chr']+','
+        G.args.classes = G.args.classes[:-1] + '}'
 
     log('common', f'Classes: {G.args.classes[1:-1]}\n')
     net.to(G.device)
