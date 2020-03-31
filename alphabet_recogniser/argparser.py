@@ -40,6 +40,10 @@ class ArgParser:
                                      help=f"Specify data type to use. Available types: {NISTDB19Dataset.folder_map.keys()}")
 
             # Tensorboard options
+            self.parser.add_argument('-t-logdir', type=str,
+                                     default='./runs/',
+                                     help="Specify path to tensorboardX logs"
+                                          "Example: -t-logdir ./runs/")
             self.parser.add_argument('-t-images', type=ArgParser.__positive_int__,
                                      help="Specify number of samples from dataset to upload to tensorboard"
                                           "Must not exceed 100")
