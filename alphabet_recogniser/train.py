@@ -55,10 +55,13 @@ def setup_global_vars():
     G.epoch_num = G.args.e
     G.path_to_model = 'cifar_net.torchmodel'
 
+    num_classes = len(G.args.classes[1:-1].split(',')) if G.args.classes is not None \
+             else NISTDB19Dataset.folder_map[G.args.data_type]['len']
+
     G.log_pref = datetime.now().strftime('%Y_%B%d_%H-%M-%S')
     G.writer = SummaryWriter(log_dir=f"./../runs/{G.log_pref}"
                                      f"_e[{G.epoch_num}]"
-                                     f"_c[{G.classes}]"
+                                     f"_c[{num_classes}]"
                                      f"_tr_s[{G.train_size_per_class}]"
                                      f"_t_s[{G.test_size_per_class}]")
 
@@ -171,23 +174,18 @@ def train_network(net):
                 # print statistics
                 running_loss += loss.item()
                 if i % size_to_check_loss == size_to_check_loss - 1:  # print every size_to_check_loss mini-batches
-                    log('train_logs', f'[{epoch + 1}, {i + 1}] loss: {running_loss / i:1.3f}')
-            log('train_logs', f'Epoch {epoch}   time: {time.perf_counter() - start_time - log_time:6.0f} seconds')
+                    print(f'[{epoch + 1}, {i + 1}] loss: {running_loss / i:1.3f}')
+            log('train_logs', f'Epoch {epoch}   time: {time.perf_counter() - start_time - log_time:6.0f} seconds', epoch + 1)
 
-            if epoch % 10 == 9:
+            if epoch % G.args.t_cm_granularity == 0 and epoch != 0:
                 start_time2 = time.perf_counter()
                 calculate_and_log_conf_matrix(net, epoch)
                 log_time += time.perf_counter() - start_time2
 
+        if (G.epoch_num - 1) % G.args.t_cm_granularity != 0:
+            calculate_and_log_conf_matrix(net, G.epoch_num)
+
         log('train_logs', f'Finished Training {time.perf_counter() - start_time - log_time:6.0f} seconds')
-        x = np.arange(0, len(loss_values))
-        fig, ax = plt.subplots(figsize=(15, 15))
-        ax.grid()
-        ax.set(xlabel=f'batch №. (batch_size={train_loader.batch_size})', ylabel='loss', title='Loss')
-        ax.plot(x, loss_values)
-        fig.savefig(
-            f'./../data/loss_e[{G.epoch_num}]_cl[{len(G.classes)}]_tr_s[{G.train_size_per_class}].png',
-            dpi=400)
 
 
 def main():
@@ -212,14 +210,19 @@ def main():
     train_loader, test_loader = get_data_loaders()
     net = EngAlphabetRecognizer96(num_classes=len(G.classes))
 
-    # imshow(torchvision.utils.make_grid(iter(test_loader).next()[0][:80]))
-
     if torch.cuda.is_available():
         log('common', 'Cuda is available\n')
     else:
         log('common', 'Cuda is unavailable\n')
         G.device = torch.device('cpu')
 
+    if G.args.classes is None:
+        G.args.classes = '{'
+        for el in G.classes.values():
+            G.args.classes += el['chr']+','
+        G.args.classes = G.args.classes[:-1] + '}'
+
+    log('common', f'Classes: {G.args.classes[1:-1]}\n')
     net.to(G.device)
     train_network(net)
     upload_net_graph(net)
@@ -229,14 +232,11 @@ def main():
     class_correct = np.zeros(len(G.classes), dtype=int)
     class_total = np.zeros(len(G.classes), dtype=int)
     with torch.no_grad():
-        pred_list = torch.zeros(0, dtype=torch.long, device='cpu')
-        lbl_list = torch.zeros(0, dtype=torch.long, device='cpu')
-        criterion = nn.CrossEntropyLoss()
         for i, data in enumerate(test_loader):
             images, labels = data[0].to(G.device), data[1].to(G.device)
 
             outputs = net(images)
-            G.writer.add_scalar('Loss/test', criterion(outputs, labels).item(), G.epoch_num + 1)
+            G.writer.add_scalar('Loss/test', G.criterion(outputs, labels).item(), G.epoch_num + 1)
 
             p_values, p_indexes = torch.max(outputs.data, 1)
             c = (p_indexes == labels).squeeze()
@@ -246,10 +246,6 @@ def main():
                 class_total[label] += 1
             total += labels.size(0)
             correct += (p_indexes == labels).sum().item()
-
-            pred_list = torch.cat([pred_list, p_indexes.view(-1).cpu()])
-            lbl_list = torch.cat([lbl_list, labels.view(-1).cpu()])
-        log_conf_matrix(G, lbl_list, pred_list, [G.classes[key]['chr'] for key in G.classes], G.epoch_num + 1)
 
     mean_acc_result = f'Accuracy of the network with ' + \
                       f'{len(G.classes)} classes ({G.train_size_per_class} el per class) ' + \
@@ -262,8 +258,6 @@ def main():
         stat_file.write(b)
 
         for idx, target in enumerate(G.classes):
-            # G.writer.add_histogram('Accuracy per class', )
-
             s = f"Accuracy of '{G.classes[idx]['chr']}': {100 * class_correct[target] / class_total[target]:3.2f}%"
             b = bytearray()
             b.extend(map(ord, s + '\n'))
