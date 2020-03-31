@@ -59,7 +59,7 @@ def setup_global_vars():
              else NISTDB19Dataset.folder_map[G.args.data_type]['len']
 
     G.log_pref = datetime.now().strftime('%Y_%B%d_%H-%M-%S')
-    G.writer = SummaryWriter(log_dir=f"./../runs/{G.log_pref}"
+    G.writer = SummaryWriter(log_dir=f"{G.args.t_logdir}{G.log_pref}"
                                      f"_e[{G.epoch_num}]"
                                      f"_c[{num_classes}]"
                                      f"_tr_s[{G.train_size_per_class}]"
@@ -251,18 +251,10 @@ def main():
                       f'{len(G.classes)} classes ({G.train_size_per_class} el per class) ' + \
                       f'on {G.epoch_num} epoch: {100 * correct / total:3.2f}%'
     log('test_accuracy', mean_acc_result)
-    with open(f'./../data/stat_e[{G.epoch_num}]_cl[{len(G.classes)}]_tr_s[{G.train_size_per_class}].txt',
-              'wb') as stat_file:
-        b = bytearray()
-        b.extend(map(ord, mean_acc_result))
-        stat_file.write(b)
 
-        for idx, target in enumerate(G.classes):
-            s = f"Accuracy of '{G.classes[idx]['chr']}': {100 * class_correct[target] / class_total[target]:3.2f}%"
-            b = bytearray()
-            b.extend(map(ord, s + '\n'))
-            stat_file.write(b)
-            log('test_accuracy_per_class', s)
+    for idx, target in enumerate(G.classes):
+        log('test_accuracy_per_class',
+            f"Accuracy of '{G.classes[idx]['chr']}': {100 * class_correct[target] / class_total[target]:3.2f}%")
     G.writer.close()
 
 
