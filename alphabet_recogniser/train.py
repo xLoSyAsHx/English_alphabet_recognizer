@@ -59,7 +59,7 @@ def setup_global_vars():
              else NISTDB19Dataset.folder_map[G.args.data_type]['len']
 
     G.log_pref = datetime.now().strftime('%Y_%B%d_%H-%M-%S')
-    G.writer = SummaryWriter(log_dir=f"./../runs/{G.log_pref}"
+    G.writer = SummaryWriter(log_dir=f"./../runs2/{G.log_pref}"
                                      f"_e[{G.epoch_num}]"
                                      f"_c[{num_classes}]"
                                      f"_tr_s[{G.train_size_per_class}]"
