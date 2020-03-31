@@ -62,8 +62,8 @@ def setup_global_vars():
     G.writer = SummaryWriter(log_dir=f"{G.args.t_logdir}{G.log_pref}"
                                      f"_e[{G.epoch_num}]"
                                      f"_c[{num_classes}]"
-                                     f"_tr_s[{G.train_size_per_class}]"
-                                     f"_t_s[{G.test_size_per_class}]")
+                                     f"_tr_s[{G.train_size_per_class if G.train_size_per_class is not None else 'All'}]"
+                                     f"_t_s[{G.test_size_per_class if G.test_size_per_class is not None else 'All'}]")
 
 
 def get_data_loaders():
