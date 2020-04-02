@@ -1,3 +1,4 @@
+import os
 import argparse
 import numpy as np
 
@@ -38,6 +39,10 @@ class ArgParser:
                                      help="batch_size value for DataLoader")
             self.parser.add_argument('-data-type', type=str, choices=NISTDB19Dataset.folder_map.keys(), required=True,
                                      help=f"Specify data type to use. Available types: {NISTDB19Dataset.folder_map.keys()}")
+
+            # Model options
+            self.parser.add_argument('-m-save-path', type=str,
+                                     help="Specify pathto folder for save trained model")
 
             # Tensorboard options
             self.parser.add_argument('-t-logdir', type=str,
@@ -93,3 +98,6 @@ class ArgParser:
 
         if args.t_images is not None and args.t_images > 100:
             raise argparse.ArgumentError("Number of samples from dataset to upload must not exceed 100!")
+
+        if args.m_save_path is not None and not os.path.exists(args.m_save_path):
+            raise argparse.ArgumentError(f"Invalid path: parameter '-m-save-path' value '{args.m_save_path}'")

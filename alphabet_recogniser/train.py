@@ -169,7 +169,7 @@ def train_network(net):
                 if i % size_to_check_loss == size_to_check_loss - 1:  # print every size_to_check_loss mini-batches
                     print(f'[{epoch + 1}, {i + 1:3d}] loss: {running_loss / i:1.3f}')
             print(f'[{epoch + 1}, {len(train_loader) - 1:3d}] loss: {running_loss / (len(train_loader) - 1):1.3f}')
-            log('train_logs', f'Epoch {epoch}   time: {time.perf_counter() - start_time - log_time:6.0f} seconds', epoch + 1)
+            log('train_logs', f'Epoch {epoch + 1}   time: {time.perf_counter() - start_time - log_time:6.0f} seconds', epoch + 1)
 
             if epoch % G.args.t_cm_granularity == 0 and epoch != 0:
                 start_time2 = time.perf_counter()
@@ -180,6 +180,21 @@ def train_network(net):
             calculate_and_log_conf_matrix(net, G.epoch_num)
 
         log('train_logs', f'Finished Training {time.perf_counter() - start_time - log_time:6.0f} seconds')
+
+
+def save_model(net, acc):
+    if G.args.m_save_path is None:
+        return
+
+    torch.save(net,os.path.join(
+                       G.args.m_save_path,
+                       f"{G.log_pref}"
+                       f"_acc[{acc}]"
+                       f"_e[{G.epoch_num}]"
+                       f"_c[{net.num_classes}]"
+                       f"_tr_s[{G.train_size_per_class if G.train_size_per_class is not None else 'All'}]"
+                       f"_t_s[{G.test_size_per_class if G.test_size_per_class is not None else 'All'}]"
+                       f".model"))
 
 
 def main():
@@ -245,6 +260,7 @@ def main():
                       f'{len(G.classes)} classes ({G.train_size_per_class} el per class) ' + \
                       f'on {G.epoch_num} epoch: {100 * correct / total:3.2f}%'
     log('test_accuracy', mean_acc_result)
+    save_model(net, f'{100 * correct / total:3.2}')
 
     for idx, target in enumerate(G.classes):
         log('test_accuracy_per_class',
