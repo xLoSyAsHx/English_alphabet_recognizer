@@ -34,7 +34,6 @@ def log_conf_matrix(G, correct_labels, predict_labels, labels, step, title='Conf
 
     tick_marks = np.arange(len(classes))
     fontsize = 24 - round(len(classes) / (1.5 if len(classes) > 13 else 0.8))
-    print(f'fontsize == {fontsize}')
 
     ax.set_xlabel('Predicted', fontsize=fontsize)
     ax.set_xticks(tick_marks)

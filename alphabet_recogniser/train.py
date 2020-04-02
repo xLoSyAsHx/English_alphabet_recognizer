@@ -168,7 +168,9 @@ def train_network(net):
                 running_loss += loss.item()
                 if i % size_to_check_loss == size_to_check_loss - 1:  # print every size_to_check_loss mini-batches
                     print(f'[{epoch + 1}, {i + 1:3d}] loss: {running_loss / i:1.3f}')
-            print(f'[{epoch + 1}, {len(train_loader) - 1:3d}] loss: {running_loss / (len(train_loader) - 1):1.3f}')
+
+            if (len(train_loader) - 1) % size_to_check_loss != size_to_check_loss - 1:
+                print(f'[{epoch + 1}, {len(train_loader):3d}] loss: {running_loss / (len(train_loader) - 1):1.3f}')
             log('train_logs', f'Epoch {epoch + 1}   time: {time.perf_counter() - start_time - log_time:6.0f} seconds', epoch + 1)
 
             if epoch % G.args.t_cm_granularity == 0 and epoch != 0:
@@ -260,7 +262,7 @@ def main():
                       f'{len(G.classes)} classes ({G.train_size_per_class} el per class) ' + \
                       f'on {G.epoch_num} epoch: {100 * correct / total:3.2f}%'
     log('test_accuracy', mean_acc_result)
-    save_model(net, f'{100 * correct / total:3.2}')
+    save_model(net, f'{100 * correct / total:3.2f}')
 
     for idx, target in enumerate(G.classes):
         log('test_accuracy_per_class',
