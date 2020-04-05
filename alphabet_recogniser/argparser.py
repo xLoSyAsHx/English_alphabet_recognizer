@@ -5,7 +5,7 @@ from alphabet_recogniser.datasets import NISTDB19Dataset
 
 
 class ArgParser:
-    __instance = None
+    __instance__ = None
 
     def __positive_int__(value):
         ivalue = int(value)
@@ -15,12 +15,12 @@ class ArgParser:
 
     @staticmethod
     def get_instance():
-        if ArgParser.__instance is None:
+        if ArgParser.__instance__ is None:
             ArgParser()
-        return ArgParser.__instance
+        return ArgParser.__instance__
 
     def __init__(self):
-        if ArgParser.__instance is not None:
+        if ArgParser.__instance__ is not None:
             raise Exception("This class is a singleton!")
         else:
             self.parser = argparse.ArgumentParser(
@@ -80,11 +80,11 @@ class ArgParser:
 
             # For uploading data from g-zipped archive
             self.parser.add_argument('-train-path', type=str,
-                                     help="Path to zipped train dataset file")
+                                     help="Path to g-zipped train dataset file")
             self.parser.add_argument('-test-path', type=str,
-                                     help="Path to zipped test dataset file")
+                                     help="Path to g-zipped test dataset file")
 
-            ArgParser.__instance = self
+            ArgParser.__instance__ = self
 
     def parse_args(self):
         return self.parser.parse_args()

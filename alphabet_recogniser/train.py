@@ -28,7 +28,8 @@ class Globals:
         self.writer = None
         self.log_pref = None
 
-        self.transform = None
+        self.train_transform = None
+        self.test_transform = None
         self.classes = None
         self.train_size_per_class = None
         self.test_size_per_class = None
@@ -81,13 +82,15 @@ def get_data_loaders(force_shuffle_test=False):
 
     train_set = NISTDB19Dataset(root_dir=G.args.root_dir, data_type=G.args.data_type, train=True, download=True,
                                 str_classes=G.args.classes, use_preproc=G.args.use_preprocessed_data,
-                                transform=G.transform, size_limit=G.args.train_limit)
+                                train_transform=G.train_transform, test_transform=G.test_transform,
+                                size_limit=G.args.train_limit)
     get_data_loaders.train = DataLoader(train_set, batch_size=G.args.batch_size,
                                         shuffle=G.args.shuffle_train, num_workers=0)
 
     test_set = NISTDB19Dataset(root_dir=G.args.root_dir, data_type=G.args.data_type, train=False, download=True,
                                str_classes=G.args.classes, use_preproc=G.args.use_preprocessed_data,
-                               transform=G.transform, size_limit=G.args.test_limit)
+                               train_transform=G.train_transform, test_transform=G.test_transform,
+                               size_limit=G.args.test_limit)
     get_data_loaders.test = DataLoader(test_set, batch_size=G.args.batch_size,
                                        shuffle=G.args.shuffle_test if force_shuffle_test is False else True,
                                        num_workers=0)
@@ -197,9 +200,15 @@ def main():
     parser.check_compatibility(G.args)
 
     setup_global_vars()  # All, except transform
-    G.transform = transforms.Compose(
+    G.train_transform = transforms.Compose(
         [transforms.CenterCrop(112),
          transforms.RandomCrop(96),
+         transforms.Grayscale(num_output_channels=1),
+         transforms.ToTensor(),
+         transforms.Normalize((0.5,), (0.5,))])
+
+    G.test_transform = transforms.Compose(
+        [transforms.CenterCrop(112),
          transforms.Grayscale(num_output_channels=1),
          transforms.ToTensor(),
          transforms.Normalize((0.5,), (0.5,))])
