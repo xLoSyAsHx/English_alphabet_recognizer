@@ -1,6 +1,5 @@
 import os
 import argparse
-import numpy as np
 
 from alphabet_recogniser.datasets import NISTDB19Dataset
 

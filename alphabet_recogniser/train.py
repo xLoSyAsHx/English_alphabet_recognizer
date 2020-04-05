@@ -19,11 +19,7 @@ from alphabet_recogniser.datasets import NISTDB19Dataset
 from alphabet_recogniser.models import EngAlphabetRecognizer96
 from alphabet_recogniser.argparser import ArgParser
 
-from alphabet_recogniser.utils import log_TPR_PPV_F1_bars
-from alphabet_recogniser.utils import log_conf_matrix
-from alphabet_recogniser.utils import log_ROC_AUC
-from alphabet_recogniser.utils import calculate_metrics
-
+from alphabet_recogniser.utils import calculate_metrics, log_conf_matrix, log_TPR_PPV_F1_bars, log_ROC_AUC
 
 
 class Globals:
@@ -75,7 +71,7 @@ def setup_global_vars():
                                      f"_t_s[{G.test_size_per_class if G.test_size_per_class is not None else 'All'}]")
 
 
-def get_data_loaders():
+def get_data_loaders(force_shuffle_test=False):
     if hasattr(get_data_loaders, 'train'):
         return get_data_loaders.train, get_data_loaders.test
 
@@ -93,7 +89,8 @@ def get_data_loaders():
                                str_classes=G.args.classes, use_preproc=G.args.use_preprocessed_data,
                                transform=G.transform, size_limit=G.args.test_limit)
     get_data_loaders.test = DataLoader(test_set, batch_size=G.args.batch_size,
-                                       shuffle=G.args.shuffle_test, num_workers=0)
+                                       shuffle=G.args.shuffle_test if force_shuffle_test is False else True,
+                                       num_workers=0)
 
     G.classes = train_set.classes
     return get_data_loaders.train, get_data_loaders.test
@@ -105,10 +102,11 @@ def upload_net_graph(net):
             net.to('cpu')
             G.writer.add_graph(net)
             net.to(G.device)
+            return
 
-    _, test_loader = get_data_loaders()
-    images = iter(test_loader).next()[0][:G.args.t_images]
     with torch.no_grad():
+        _, test_loader = get_data_loaders(force_shuffle_test=True)
+        images = iter(test_loader).next()[0][:G.args.t_images]
         images = images.to('cpu')
         net.to('cpu')
         G.writer.add_image('MNIST19 preprocessed samples', torchvision.utils.make_grid(images))
@@ -232,35 +230,15 @@ def main():
     train_network(net)
     upload_net_graph(net)
 
-    correct = 0
-    total = 0
-    class_correct = np.zeros(len(G.classes), dtype=int)
-    class_total = np.zeros(len(G.classes), dtype=int)
-    with torch.no_grad():
-        for i, data in enumerate(test_loader):
-            images, labels = data[0].to(G.device), data[1].to(G.device)
-
-            outputs = net(images)
-            G.writer.add_scalar('Loss/test', G.criterion(outputs, labels).item(), G.epoch_num + 1)
-
-            p_values, p_indexes = torch.max(outputs.data, 1)
-            c = (p_indexes == labels).squeeze()
-            for i in range(len(labels)):
-                label = labels[i]
-                class_correct[label] += c[i].item()
-                class_total[label] += 1
-            total += labels.size(0)
-            correct += (p_indexes == labels).sum().item()
-
+    metrics = calculate_metrics(G, net, test_loader, 0, log_loss=False)
     mean_acc_result = f'Accuracy of the network with ' + \
                       f'{len(G.classes)} classes ({G.train_size_per_class} el per class) ' + \
-                      f'on {G.epoch_num} epoch: {100 * correct / total:3.2f}%'
+                      f'on {G.epoch_num} epoch: {100 * np.mean(metrics.TPR):3.2f}%'
     log('test_accuracy', mean_acc_result)
-    save_model(net, f'{100 * correct / total:3.2f}')
-
     for idx, target in enumerate(G.classes):
-        log('test_accuracy_per_class',
-            f"Recall of '{G.classes[idx]['chr']}': {100 * class_correct[target] / class_total[target]:3.2f}%")
+        log('test_accuracy_per_class', f"Recall of '{G.classes[idx]['chr']}': {100 * metrics.TPR[target]:3.2f}%")
+
+    save_model(net, f'{100 * np.mean(metrics.TPR):3.2f}')
     G.writer.close()
 
 

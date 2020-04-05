@@ -35,6 +35,7 @@ setup(
         'tensorboard>=2.0.0',
         'numpy',
         'tqdm',
+        'scipy',
         'matplotlib'
     ],
     platforms=['Windows 10'],
