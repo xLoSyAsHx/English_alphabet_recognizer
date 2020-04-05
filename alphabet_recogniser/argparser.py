@@ -78,11 +78,17 @@ class ArgParser:
             self.parser.add_argument('--shuffle-test', action='store_true',
                                      help="Set 'shuffle=True' for test dataset")
 
-            # For uploading data from lzima-zipped archive
-            self.parser.add_argument('-train-path', type=str,
+            # For load/save data to/from lzima-zipped archive
+            self.parser.add_argument('-train-save-path', type=str,
+                                     help="Path to save lzima-zipped train dataset file"
+                                          "Will use NISTDB19Dataset.save_to_file(dataset, path)")
+            self.parser.add_argument('-test-save-path', type=str,
+                                     help="Path to save lzima-zipped test dataset file"
+                                          "Will use NISTDB19Dataset.save_to_file(dataset, path)")
+            self.parser.add_argument('-train-load-path', type=str,
                                      help="Path to lzima-zipped train dataset file"
                                           "Will use NISTDB19Dataset.load_from_file(path)")
-            self.parser.add_argument('-test-path', type=str,
+            self.parser.add_argument('-test-load-path', type=str,
                                      help="Path to lzima-zipped test dataset file"
                                           "Will use NISTDB19Dataset.load_from_file(path)")
 
@@ -92,13 +98,6 @@ class ArgParser:
         return self.parser.parse_args()
 
     def check_compatibility(self, args):
-        if (args.train_path is not None or args.test_path is not None) and args.use_preprocessed_data:
-            raise argparse.ArgumentError("'--use-preprocessed-data' not allowed with '-(train/test)-path'")
-
-        if args.train_path is not None and args.test_path is None or \
-                args.train_path is None and args.test_path is not None:
-            raise argparse.ArgumentError("You must specify both '-train-path' and '-test-path'")
-
         if args.classes is not None and (args.classes[0] != '{' or args.classes[-1] != '}' or ' ' in args.classes):
             raise argparse.ArgumentError("Invalid format of argument for '-classes'"
                                          "Example: -classes {a,b,c}")
