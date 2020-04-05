@@ -80,17 +80,23 @@ def get_data_loaders(force_shuffle_test=False):
         NISTDB19Dataset.download_and_preprocess(root_dir=G.args.root_dir, data_type=G.args.data_type,
                                                 str_classes=G.args.classes)
 
-    train_set = NISTDB19Dataset(root_dir=G.args.root_dir, data_type=G.args.data_type, train=True, download=True,
-                                str_classes=G.args.classes, use_preproc=G.args.use_preprocessed_data,
-                                train_transform=G.train_transform, test_transform=G.test_transform,
-                                size_limit=G.args.train_limit)
+    if G.args.train_path in None:
+        train_set = NISTDB19Dataset(root_dir=G.args.root_dir, data_type=G.args.data_type, train=True, download=True,
+                                    str_classes=G.args.classes, use_preproc=G.args.use_preprocessed_data,
+                                    train_transform=G.train_transform, test_transform=G.test_transform,
+                                    size_limit=G.args.train_limit)
+    else:
+        train_set = NISTDB19Dataset.load_from_file(G.args.train_path)
     get_data_loaders.train = DataLoader(train_set, batch_size=G.args.batch_size,
                                         shuffle=G.args.shuffle_train, num_workers=0)
 
-    test_set = NISTDB19Dataset(root_dir=G.args.root_dir, data_type=G.args.data_type, train=False, download=True,
-                               str_classes=G.args.classes, use_preproc=G.args.use_preprocessed_data,
-                               train_transform=G.train_transform, test_transform=G.test_transform,
-                               size_limit=G.args.test_limit)
+    if G.args.test_path in None:
+        test_set = NISTDB19Dataset(root_dir=G.args.root_dir, data_type=G.args.data_type, train=False, download=True,
+                                   str_classes=G.args.classes, use_preproc=G.args.use_preprocessed_data,
+                                   train_transform=G.train_transform, test_transform=G.test_transform,
+                                   size_limit=G.args.test_limit)
+    else:
+        test_set = NISTDB19Dataset.load_from_file(G.args.test_path)
     get_data_loaders.test = DataLoader(test_set, batch_size=G.args.batch_size,
                                        shuffle=G.args.shuffle_test if force_shuffle_test is False else True,
                                        num_workers=0)
