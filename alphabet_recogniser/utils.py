@@ -1,19 +1,13 @@
+import sys
 import torch
-
+import itertools
+import numpy as np
 import matplotlib.pyplot as plt
+
 from matplotlib.backends.backend_agg import FigureCanvasAgg
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import roc_curve
-from sklearn.metrics import auc
+from sklearn.metrics import confusion_matrix, roc_curve, auc
 
 from scipy import interp
-
-import re
-import sys
-import itertools
-import matplotlib
-import numpy as np
-from textwrap import wrap
 
 
 class MLMetrics:
