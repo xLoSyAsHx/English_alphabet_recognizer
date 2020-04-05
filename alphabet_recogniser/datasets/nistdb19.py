@@ -37,7 +37,7 @@ class NISTDB19Dataset(data.Dataset):
             self.target = target
 
     def __init__(self, root_dir=None, train=True, download=False, data_type=None,
-                 size_limit=0, transform=None,
+                 size_limit=0, train_transform=None, test_transform=None,
                  str_classes=None, use_preproc=False, verify=True):
         """
         Args:
@@ -50,14 +50,14 @@ class NISTDB19Dataset(data.Dataset):
                 downloaded again.
             data_type (string): Data type for loading
                 can be 'digits', 'cap_letters' or 'low_letters'.
-            size_limit (int): Dataset global size limit to load
-            size_limit_per_class (bool): If True - size_limit will apply to every class,
-                otherwise, size limit for every class will be calculated as size_limit / num_classes
-            transform (callable, optional): Optional transform to be applied
-                on a sample.
+            size_limit (int): Dataset size limit per class
+            train_transform (callable, optional): Optional transform to be applied
+                on a sample for train.
+            test_transform (callable, optional): Optional transform to be applied
+                on a sample for test.
+            str_classes (str, optional): Specify class to upload. Example: '{a,b,c}'
             use_preproc (bool, optional): Use by_class_preproc dir for data uploading
             verify (bool, optional): If false - md5 verification will be skipped
-            str_classes (str, optional): Specify class to upload. Example: '{a,b,c}'
         """
 
         if not self.folder_map.get(data_type):
@@ -69,7 +69,8 @@ class NISTDB19Dataset(data.Dataset):
         self.data_type = data_type
         self.root_dir = os.path.expanduser(root_dir)
         self.train = train
-        self.transform = transform
+        self.train_transform = train_transform
+        self.test_transform  = test_transform
         self.size_per_class = size_limit
 
         if os.path.exists(self.root_dir):
@@ -88,8 +89,10 @@ class NISTDB19Dataset(data.Dataset):
 
     def __getitem__(self, idx):
         img = Image.fromarray(self.data[idx])
-        if self.transform is not None:
-            img = self.transform(img)
+        if self.train_transform is not None and self.train:
+            img = self.train_transform(img)
+        elif self.test_transform is not None and not self.train:
+            img = self.test_transform(img)
         target = self.targets[idx]
 
         return img, target
