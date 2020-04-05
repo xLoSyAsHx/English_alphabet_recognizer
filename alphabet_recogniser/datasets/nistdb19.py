@@ -201,7 +201,7 @@ class NISTDB19Dataset(data.Dataset):
             DS.__save_batches__(test_batches, path_to_batches, prefix='test')
 
     @staticmethod
-    def save_to_file(dataset, filepath, force_overwrite=False, compression='gzip'):
+    def save_to_file(dataset, filepath, force_overwrite=False, compression='lzma'):
         if not isinstance(dataset, NISTDB19Dataset):
             raise RuntimeError(f"Object {type(dataset)} is not inherit from NISTDB19Dataset")
 
@@ -216,11 +216,11 @@ class NISTDB19Dataset(data.Dataset):
             compress_pickle.dump(dataset, dataset_file, compression=compression)
 
     @staticmethod
-    def load_from_file(filepath):
+    def load_from_file(filepath, compression='lzma'):
         if not os.path.exists(filepath):
             raise RuntimeError(f"Can't open {filepath}. File doesn't exist")
         with open(filepath, 'rb') as dataset_file:
-            return compress_pickle.load(dataset_file, compression="lzma")
+            return compress_pickle.load(dataset_file, compression=compression)
 
     @staticmethod
     def download(root_dir, download, verify):
