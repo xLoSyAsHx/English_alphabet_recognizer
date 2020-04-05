@@ -52,6 +52,8 @@ class ArgParser:
             self.parser.add_argument('-t-images', type=ArgParser.__positive_int__,
                                      help="Specify number of samples from dataset to upload to tensorboard"
                                           "Must not exceed 100")
+            self.parser.add_argument('-t-precision-bar-gran', type=ArgParser.__positive_int__,
+                                     help="Specify how often to plot precision bar to upload to tensorboard")
             self.parser.add_argument('-t-cm-granularity', type=ArgParser.__positive_int__,
                                      default=10,
                                      help="Specify how often to plot confusion matrix to upload to tensorboard")
