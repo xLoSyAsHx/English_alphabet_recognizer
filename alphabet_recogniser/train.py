@@ -21,7 +21,9 @@ from alphabet_recogniser.argparser import ArgParser
 
 from alphabet_recogniser.utils import log_TPR_PPV_F1_bars
 from alphabet_recogniser.utils import log_conf_matrix
+from alphabet_recogniser.utils import log_ROC_AUC
 from alphabet_recogniser.utils import calculate_metrics
+
 
 
 class Globals:
@@ -120,11 +122,17 @@ def add_logs_to_tensorboard(net, epoch):
     classes = [G.classes[key]['chr'] for key in G.classes]
     metrics = calculate_metrics(G, net, test_loader, epoch)
 
-    # if epoch % G.args.t_cm_granularity == 0 and epoch != 0:
-        # log_conf_matrix(G, metrics, classes, epoch)
+    def can_log(granularity):
+        return (epoch % granularity == 0 and epoch != 0) or (epoch % granularity != 0 and G.epoch_num - 1 == epoch)
 
-    if epoch % G.args.t_precision_bar_gran == 0 and epoch != 0:
+    if can_log(G.args.t_cm_granularity):
+        log_conf_matrix(G, metrics, classes, epoch)
+
+    if can_log(G.args.t_precision_bar_gran):
         log_TPR_PPV_F1_bars(G, metrics, classes, epoch)
+
+    if can_log(G.args.t_roc_auc_gran):
+        log_ROC_AUC(G, metrics, classes, epoch)
 
     return time.perf_counter() - start_time
 
@@ -158,7 +166,7 @@ def train_network(net):
 
                 # print statistics
                 running_loss += loss.item()
-                if i % size_to_check_loss == size_to_check_loss - 1:  # print every size_to_check_loss mini-batches
+                if i % size_to_check_loss == size_to_check_loss - 1 and i != 0:  # print every size_to_check_loss mini-batches
                     print(f'[{epoch + 1}, {i + 1:3d}] loss: {running_loss / i:1.3f}')
 
             if (len(train_loader) - 1) % size_to_check_loss != size_to_check_loss - 1:
