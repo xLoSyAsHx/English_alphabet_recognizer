@@ -14,12 +14,14 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from datetime import datetime
 
-
 import alphabet_recogniser
 from alphabet_recogniser.datasets import NISTDB19Dataset
 from alphabet_recogniser.models import EngAlphabetRecognizer96
 from alphabet_recogniser.argparser import ArgParser
+
+from alphabet_recogniser.utils import log_TPR_PPV_F1_bars
 from alphabet_recogniser.utils import log_conf_matrix
+from alphabet_recogniser.utils import calculate_metrics
 
 
 class Globals:
@@ -53,6 +55,12 @@ def setup_global_vars():
     G.device = torch.device('cuda')
     G.epoch_num = G.args.e
     G.path_to_model = 'cifar_net.torchmodel'
+
+    if G.args.t_cm_granularity is None:
+        G.args.t_cm_granularity = sys.maxsize
+
+    if G.args.t_precision_bar_gran is None:
+        G.args.t_precision_bar_gran = sys.maxsize
 
     num_classes = len(G.args.classes[1:-1].split(',')) if G.args.classes is not None \
              else NISTDB19Dataset.folder_map[G.args.data_type]['len']
@@ -106,35 +114,19 @@ def upload_net_graph(net):
         net.to(G.device)
 
 
-def calculate_and_log_conf_matrix(net, epoch):
+def add_logs_to_tensorboard(net, epoch):
+    start_time = time.perf_counter()
     _, test_loader = get_data_loaders()
+    classes = [G.classes[key]['chr'] for key in G.classes]
+    metrics = calculate_metrics(G, net, test_loader, epoch)
 
-    correct = 0
-    total = 0
-    class_correct = np.zeros(len(G.classes), dtype=int)
-    class_total = np.zeros(len(G.classes), dtype=int)
-    with torch.no_grad():
-        pred_list = torch.zeros(0, dtype=torch.long, device='cpu')
-        lbl_list = torch.zeros(0, dtype=torch.long, device='cpu')
-        criterion = nn.CrossEntropyLoss()
-        for i, data in enumerate(test_loader):
-            images, labels = data[0].to(G.device), data[1].to(G.device)
+    # if epoch % G.args.t_cm_granularity == 0 and epoch != 0:
+        # log_conf_matrix(G, metrics, classes, epoch)
 
-            outputs = net(images)
-            G.writer.add_scalar('Loss/test', criterion(outputs, labels).item(), epoch)
+    if epoch % G.args.t_precision_bar_gran == 0 and epoch != 0:
+        log_TPR_PPV_F1_bars(G, metrics, classes, epoch)
 
-            p_values, p_indexes = torch.max(outputs.data, 1)
-            c = (p_indexes == labels).squeeze()
-            for i in range(len(labels)):
-                label = labels[i]
-                class_correct[label] += c[i].item()
-                class_total[label] += 1
-            total += labels.size(0)
-            correct += (p_indexes == labels).sum().item()
-
-            pred_list = torch.cat([pred_list, p_indexes.view(-1).cpu()])
-            lbl_list = torch.cat([lbl_list, labels.view(-1).cpu()])
-        log_conf_matrix(G, lbl_list, pred_list, [G.classes[key]['chr'] for key in G.classes], epoch)
+    return time.perf_counter() - start_time
 
 
 def train_network(net):
@@ -172,15 +164,9 @@ def train_network(net):
             if (len(train_loader) - 1) % size_to_check_loss != size_to_check_loss - 1:
                 print(f'[{epoch + 1}, {len(train_loader):3d}] loss: {running_loss / (len(train_loader) - 1):1.3f}')
             log('train_logs', f'Epoch {epoch + 1}   time: {time.perf_counter() - start_time - log_time:6.0f} seconds', epoch + 1)
+            log_time += add_logs_to_tensorboard(net, epoch)
 
-            if epoch % G.args.t_cm_granularity == 0 and epoch != 0:
-                start_time2 = time.perf_counter()
-                calculate_and_log_conf_matrix(net, epoch)
-                log_time += time.perf_counter() - start_time2
-
-        if (G.epoch_num - 1) % G.args.t_cm_granularity != 0:
-            calculate_and_log_conf_matrix(net, G.epoch_num)
-
+        log_time += add_logs_to_tensorboard(net, G.epoch_num - 1)
         log('train_logs', f'Finished Training {time.perf_counter() - start_time - log_time:6.0f} seconds')
 
 
@@ -266,7 +252,7 @@ def main():
 
     for idx, target in enumerate(G.classes):
         log('test_accuracy_per_class',
-            f"Accuracy of '{G.classes[idx]['chr']}': {100 * class_correct[target] / class_total[target]:3.2f}%")
+            f"Recall of '{G.classes[idx]['chr']}': {100 * class_correct[target] / class_total[target]:3.2f}%")
     G.writer.close()
 
 
