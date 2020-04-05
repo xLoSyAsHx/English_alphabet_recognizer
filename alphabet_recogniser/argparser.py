@@ -78,11 +78,13 @@ class ArgParser:
             self.parser.add_argument('--shuffle-test', action='store_true',
                                      help="Set 'shuffle=True' for test dataset")
 
-            # For uploading data from g-zipped archive
+            # For uploading data from lzima-zipped archive
             self.parser.add_argument('-train-path', type=str,
-                                     help="Path to g-zipped train dataset file")
+                                     help="Path to lzima-zipped train dataset file"
+                                          "Will use NISTDB19Dataset.load_from_file(path)")
             self.parser.add_argument('-test-path', type=str,
-                                     help="Path to g-zipped test dataset file")
+                                     help="Path to lzima-zipped test dataset file"
+                                          "Will use NISTDB19Dataset.load_from_file(path)")
 
             ArgParser.__instance__ = self
 
