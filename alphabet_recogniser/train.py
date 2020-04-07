@@ -55,11 +55,11 @@ def setup_global_vars():
     G.epoch_num = G.args.e
     G.path_to_model = 'cifar_net.torchmodel'
 
-    if G.args.t_cm_granularity is None:
-        G.args.t_cm_granularity = sys.maxsize
+    if G.args.t_cm_freq is None:
+        G.args.t_cm_freq = sys.maxsize
 
-    if G.args.t_precision_bar_gran is None:
-        G.args.t_precision_bar_gran = sys.maxsize
+    if G.args.t_precision_bar_freq is None:
+        G.args.t_precision_bar_freq = sys.maxsize
 
     num_classes = len(G.args.classes[1:-1].split(',')) if G.args.classes is not None \
              else NISTDB19Dataset.folder_map[G.args.data_type]['len']
@@ -127,22 +127,33 @@ def upload_net_graph(net):
         net.to(G.device)
 
 
+def get_metrics(net, epoch):
+    if hasattr(get_metrics, 'last_calculated_epoch') and get_metrics.last_calculated_epoch == epoch:
+        return get_metrics.metrics
+
+    _, test_loader = get_data_loaders()
+    get_metrics.last_calculated_epoch = epoch
+    get_metrics.metrics = calculate_metrics(G, net, test_loader, epoch)
+
+    return get_metrics.metrics
+
+
 def add_logs_to_tensorboard(net, epoch):
     start_time = time.perf_counter()
-    _, test_loader = get_data_loaders()
+
     classes = [G.classes[key]['chr'] for key in G.classes]
-    metrics = calculate_metrics(G, net, test_loader, epoch)
+    metrics = get_metrics(net, epoch)
 
-    def can_log(granularity):
-        return (epoch % granularity == 0 and epoch != 0) or (epoch % granularity != 0 and G.epoch_num - 1 == epoch)
+    def can_log(frequence):
+        return (epoch % frequence == 0 and epoch != 0) or (epoch % frequence != 0 and G.epoch_num - 1 == epoch)
 
-    if can_log(G.args.t_cm_granularity):
+    if can_log(G.args.t_cm_freq):
         log_conf_matrix(G, metrics, classes, epoch)
 
-    if can_log(G.args.t_precision_bar_gran):
+    if can_log(G.args.t_precision_bar_freq):
         log_TPR_PPV_F1_bars(G, metrics, classes, epoch)
 
-    if can_log(G.args.t_roc_auc_gran):
+    if can_log(G.args.t_roc_auc_freq):
         log_ROC_AUC(G, metrics, classes, epoch)
 
     return time.perf_counter() - start_time
@@ -185,23 +196,29 @@ def train_network(net):
             log('train_logs', f'Epoch {epoch + 1}   time: {time.perf_counter() - start_time - log_time:6.0f} seconds', epoch + 1)
             log_time += add_logs_to_tensorboard(net, epoch)
 
+            if G.args.m_save_period is not None and epoch % G.args.m_save_period == G.args.m_save_period - 1:
+                save_model(net, f'{100 * np.mean(get_metrics(net, epoch).TPR):3.2f}', epoch + 1)
+
         log_time += add_logs_to_tensorboard(net, G.epoch_num - 1)
         log('train_logs', f'Finished Training {time.perf_counter() - start_time - log_time:6.0f} seconds')
 
 
-def save_model(net, acc):
+def save_model(net, acc, epoch):
     if G.args.m_save_path is None:
         return
 
-    torch.save(net,os.path.join(
+    save_path = os.path.join(
                        G.args.m_save_path,
                        f"{G.log_pref}"
                        f"_acc[{acc}]"
-                       f"_e[{G.epoch_num}]"
+                       f"_e[{epoch}]"
                        f"_c[{net.num_classes}]"
                        f"_tr_s[{G.train_size_per_class if G.train_size_per_class is not None else 'All'}]"
                        f"_t_s[{G.test_size_per_class if G.test_size_per_class is not None else 'All'}]"
-                       f".model"))
+                       f".model")
+
+    if not os.path.exists(save_path):
+        torch.save(net, save_path)
 
 
 def main():
@@ -257,7 +274,7 @@ def main():
     for idx, target in enumerate(G.classes):
         log('test_accuracy_per_class', f"Recall of '{G.classes[idx]['chr']}': {100 * metrics.TPR[target]:3.2f}%")
 
-    save_model(net, f'{100 * np.mean(metrics.TPR):3.2f}')
+    save_model(net, f'{100 * np.mean(metrics.TPR):3.2f}', G.epoch_num)
     G.writer.close()
 
 
