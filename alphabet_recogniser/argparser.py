@@ -41,23 +41,25 @@ class ArgParser:
 
             # Model options
             self.parser.add_argument('-m-save-path', type=str,
-                                     help="Specify pathto folder for save trained model")
+                                     help="Specify path to folder for save trained model")
+            self.parser.add_argument('-m-save-period', type=ArgParser.__positive_int__,
+                                     help="Specify how often save trained model")
 
             # Tensorboard options
             self.parser.add_argument('-t-logdir', type=str,
                                      default='./runs/',
-                                     help="Specify path to tensorboardX logs"
+                                     help="Specify path to tensorboard logs"
                                           "Example: -t-logdir ./runs/")
             self.parser.add_argument('-t-images', type=ArgParser.__positive_int__,
                                      help="Specify number of samples from dataset to upload to tensorboard"
                                           "Must not exceed 100")
-            self.parser.add_argument('-t-cm-granularity', type=ArgParser.__positive_int__,
+            self.parser.add_argument('-t-cm-freq', type=ArgParser.__positive_int__,
                                      default=10,
                                      help="Specify how often to plot confusion matrix to upload to tensorboard")
-            self.parser.add_argument('-t-precision-bar-gran', type=ArgParser.__positive_int__,
+            self.parser.add_argument('-t-precision-bar-freq', type=ArgParser.__positive_int__,
                                      default=10,
                                      help="Specify how often to plot precision bar to upload to tensorboard")
-            self.parser.add_argument('-t-roc-auc-gran', type=ArgParser.__positive_int__,
+            self.parser.add_argument('-t-roc-auc-freq', type=ArgParser.__positive_int__,
                                      default=10,
                                      help="Specify how often to plot ROC curves to upload to tensorboard")
 
