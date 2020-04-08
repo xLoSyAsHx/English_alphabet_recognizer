@@ -41,12 +41,13 @@ def imshow(img):
     plt.show()
 
 
-def autolabel(rects, ax):
+def autolabel(rects, ax, fontsize):
     for rect in rects:
         height = rect.get_height()
-        ax.annotate(f'{height:2.0f}' if height < 1.0 else f'{height:3.0f}',
+        ax.annotate(f'{int(height)}',
                     xy=(rect.get_x() + rect.get_width() / 2, height),
                     xytext=(0, 3),  # 3 points vertical offset
+                    fontsize=fontsize,
                     textcoords="offset points",
                     ha='center', va='bottom')
 
@@ -99,11 +100,11 @@ def log_conf_matrix(G, M, classes, step, title='Confusion matrix', tensor_name =
         cm = cm.astype('int')
 
     np.set_printoptions(precision=2)
-    fig, ax = plt.subplots(figsize=(5, 5), dpi=200, facecolor='w', edgecolor='k')
+    fig, ax = plt.subplots(figsize=(7, 7), dpi=200, facecolor='w', edgecolor='k')
     ax.imshow(M.cm, cmap='Oranges')
 
     tick_marks = np.arange(len(classes))
-    fontsize = 24 - round(len(classes) / (1.5 if len(classes) > 13 else 0.8))
+    fontsize = 23 - round(len(classes) / (1.5 if len(classes) > 13 else 0.8))
 
     ax.set_xlabel('Predicted', fontsize=fontsize)
     ax.set_xticks(tick_marks)
@@ -129,26 +130,29 @@ def log_conf_matrix(G, M, classes, step, title='Confusion matrix', tensor_name =
 def log_TPR_PPV_F1_bars(G, M, classes, step):
     fontsize = 24 - round(len(classes) / (1.5 if len(classes) > 13 else 0.8))
 
-    total_width = 0.75 * 2
+    multiplier = 3
+    total_width = 0.75 * multiplier
     el_width = total_width / 3
-    x = np.arange(0, len(classes) * 2, 2)
+    x = np.arange(0, len(classes) * multiplier, multiplier)
     np.set_printoptions(precision=2)
-    fig, ax = plt.subplots(figsize=(5, 5), dpi=200, facecolor='w', edgecolor='k')
-    rects_TPR = ax.bar(x - total_width / 2 + el_width * 0.5, M.TPR * 100, width=el_width, label='Recall')
-    rects_PPV = ax.bar(x - total_width / 2 + el_width * 1.5, M.PPV * 100, width=el_width, label='Precision')
-    rects_F1  = ax.bar(x - total_width / 2 + el_width * 2.5, M.F1  * 100, width=el_width, label='F1 score', color='r')
+    fig, ax = plt.subplots(figsize=(11, 7), dpi=200, facecolor='w', edgecolor='k')
+    rects_TPR = ax.bar(x - total_width / 2 + el_width * 0.5, M.TPR * 100, width=el_width, align='center', label='Recall')
+    rects_PPV = ax.bar(x - total_width / 2 + el_width * 1.5, M.PPV * 100, width=el_width, align='center', label='Precision')
+    rects_F1  = ax.bar(x - total_width / 2 + el_width * 2.5, M.F1  * 100, width=el_width, align='center', label='F1 score', color='r')
+
 
     ax.set_ylim([0, 110])
-    ax.set_xlabel('Classes', fontsize=fontsize + 2)
-    ax.set_ylabel('Percents', fontsize=fontsize + 2)
+    ax.set_xlabel('Classes', fontsize=fontsize + 5)
+    ax.set_ylabel('Percents', fontsize=fontsize + 5)
+    ax.set_xticks(x)
     ax.set_xticklabels(classes, fontsize=fontsize, ha='center')
     ax.set_title('Recall / Precision / F1')
     ax.grid()
     ax.legend(loc='best')
 
-    autolabel(rects_TPR, ax)
-    autolabel(rects_PPV, ax)
-    autolabel(rects_F1,  ax)
+    autolabel(rects_TPR, ax, fontsize - 3)
+    autolabel(rects_PPV, ax, fontsize - 3)
+    autolabel(rects_F1,  ax, fontsize - 3)
 
     fig.set_tight_layout(True)
     add_fig_to_tensorboard(G, fig, 'recall/precision/F1', step)
@@ -173,10 +177,10 @@ def log_ROC_AUC(G, M, classes, step):
         interp_tprs.append(interp_tpr)
 
     np.set_printoptions(precision=2)
-    fig, ax = plt.subplots(figsize=(5, 5), dpi=200, facecolor='w', edgecolor='k')
+    fig, ax = plt.subplots(figsize=(9, 7), dpi=200, facecolor='w', edgecolor='k')
 
     for i in range(len(classes)):
-        ax.plot(fpr[i], tpr[i], label=f"ROC '{classes[i]}' (AUC = {roc_auc[i]:0.2f})", alpha=0.5)
+        ax.plot(fpr[i], tpr[i], label=f"ROC '{classes[i]}' (AUC = {roc_auc[i]:0.2f})", linewidth=0.5, alpha=0.5)
     ax.plot([0, 1], [0, 1],     label='Chance', color='r', linestyle='--')
 
     mean_tpr = np.mean(interp_tprs, axis=0)
@@ -198,7 +202,8 @@ def log_ROC_AUC(G, M, classes, step):
     ax.set_ylabel('True Positive Rate')
     ax.set_title('ROC curves')
     ax.grid()
-    ax.legend(loc='lower right')
+    # ax.legend(loc='lower right')
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     fig.set_tight_layout(True)
     add_fig_to_tensorboard(G, fig, 'ROC-AUC', step)
