@@ -189,12 +189,14 @@ def train_network(net):
                 # print statistics
                 running_loss += loss.item()
                 if i % size_to_check_loss == size_to_check_loss - 1 and i != 0:  # print every size_to_check_loss mini-batches
-                    print(f'[{epoch + 1}, {i + 1:3d}] loss: {running_loss / i:1.3f}')
+                    log('train_logs', f'[{epoch + 1}, {i + 1:3d}] loss: {running_loss / i:1.3f}')
 
             if (len(train_loader) - 1) % size_to_check_loss != size_to_check_loss - 1:
-                print(f'[{epoch + 1}, {len(train_loader):3d}] loss: {running_loss / (len(train_loader) - 1):1.3f}')
-            log('train_logs', f'Epoch {epoch + 1}   time: {time.perf_counter() - start_time - log_time:6.0f} seconds', epoch + 1)
+                log('train_logs', f'[{epoch + 1}, {len(train_loader):3d}] loss: {running_loss / (len(train_loader) - 1):1.3f}')
             log_time += add_logs_to_tensorboard(net, epoch)
+            log('train_logs',
+                f'Epoch {epoch + 1}   time: {time.perf_counter() - start_time - log_time:6.0f} seconds'
+                f';      log_time: {log_time:6.0f} seconds', epoch + 1)
 
             if G.args.m_save_period is not None and epoch % G.args.m_save_period == G.args.m_save_period - 1:
                 save_model(net, f'{100 * np.mean(get_metrics(net, epoch).TPR):3.2f}', epoch + 1)
