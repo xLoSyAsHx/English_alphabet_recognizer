@@ -5,7 +5,7 @@ with open('README.md', 'r') as f:
    LONG_DESCRIPTION = f.read()
 
 CLASSIFIERS = [
-    'Development Status :: 1 - Planning',
+    'Development Status :: 3 - Alpha',
     'Intended Audience :: Developers',
     'License :: Free for non-commercial use',
     'Programming Language :: Python',
@@ -38,6 +38,6 @@ setup(
         'scipy',
         'matplotlib'
     ],
-    platforms=['Windows 10'],
+    platforms=['Windows 10', 'Linux'],
     license='NO'
 )
