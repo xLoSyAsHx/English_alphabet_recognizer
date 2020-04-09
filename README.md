@@ -13,7 +13,7 @@ Table of contents
    * [Head](#hse_ml_alphabet_recognition)
    * [Table of contents](#table-of-contents)
    * [Current network accuracy](#current-network-accuracy)
-      * [English low letters](#english-low-letters--92.95%)
+      * [English low letters](#english-low-letters---92.95%)
    * [How to launch training](#how-to-launch-training)
    * [Tensorboard](#tensorboard)
    * [MNIST19 preprocessed sample](#mnist1919-preprocessed-sample)
