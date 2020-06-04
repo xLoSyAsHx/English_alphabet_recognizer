@@ -21,7 +21,7 @@ def train_network(net):
     C = Config.get_instance()
     train_loader, test_loader = get_data_loaders()
 
-    if os.path.exists(C.path_to_model) and False:
+    if os.path.exists(C.path_to_model):
         net.load_state_dict(torch.load(C.path_to_model))
     else:
         optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
