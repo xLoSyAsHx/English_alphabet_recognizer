@@ -1,37 +1,14 @@
-import sys
+import os, time, itertools
 import torch
-import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg
-from sklearn.metrics import confusion_matrix, roc_curve, auc
-
+from sklearn.metrics import roc_curve, auc
+from torchvision.utils import make_grid
 from scipy import interp
 
-
-class MLMetrics:
-    def __init__(self, cm, pred_list, lbl_list, prob_list):
-        self.cm = cm
-        self.pred_list = pred_list
-        self.lbl_list  = lbl_list
-        self.prob_list = prob_list
-
-        self.FP = FP = cm.sum(axis=0) - np.diag(cm)
-        self.FN = FN = cm.sum(axis=1) - np.diag(cm)
-        self.TP = TP = np.diag(cm)
-        self.TN = TN = cm.sum() - (FP + FN + TP)
-
-        eps = sys.float_info.min
-        self.TPR = TP / (TP + FN + eps) # recall (true positive rate)
-        self.TNR = TN / (TN + FP + eps)
-        self.PPV = TP / (TP + FP + eps) # precision (positive prediction value)
-        self.NPV = TN / (TN + FN + eps)
-        self.FPR = FP / (FP + TN + eps)
-        self.FNR = FN / (TP + FN + eps)
-        self.FDR = FP / (TP + FP + eps)
-        self.F1  = 2 * (self.PPV * self.TPR) / (self.PPV + self.TPR + eps)
-        self.ACC = (TP + TN) / (TP + FP + FN + TN + eps)
+from alphabet_recogniser.test import eval_cached
 
 
 def imshow(img):
@@ -52,6 +29,65 @@ def autolabel(rects, ax, fontsize):
                     ha='center', va='bottom')
 
 
+'''
+Tensorboard logs section
+'''
+def save_model(G, net, acc, epoch):
+    if G.args.m_save_path is None:
+        return
+
+    save_path = os.path.join(
+                       G.args.m_save_path,
+                       f"{G.log_pref}"
+                       f"_acc[{acc}]"
+                       f"_e[{epoch}]"
+                       f"_c[{net.num_classes}]"
+                       f"_tr_s[{G.train_size_per_class if G.train_size_per_class is not None else 'All'}]"
+                       f"_t_s[{G.test_size_per_class if G.test_size_per_class is not None else 'All'}]"
+                       f".model")
+
+    if not os.path.exists(save_path):
+        torch.save(net, save_path)
+
+
+def upload_net_graph(G, net, test_loader):
+    if G.args.t_images is None:
+        with torch.no_grad():
+            net.to('cpu')
+            G.writer.add_graph(net)
+            net.to(G.device)
+            return
+
+    with torch.no_grad():
+        images = iter(test_loader).next()[0][:G.args.t_images]
+        images = images.to('cpu')
+        net.to('cpu')
+        G.writer.add_image('MNIST19 preprocessed samples', make_grid(images))
+        G.writer.add_graph(net, images)
+        net.to(G.device)
+
+
+def add_logs_to_tensorboard(G, net, test_loader, epoch):
+    start_time = time.perf_counter()
+
+    classes = [G.classes[key]['chr'] for key in G.classes]
+    metrics = eval_cached(G, net, test_loader, epoch)
+
+    def can_log(frequence):
+        return (epoch % frequence == 0 and epoch != 0) or (epoch % frequence != 0 and G.epoch_num - 1 == epoch)
+
+    if can_log(G.args.t_cm_freq):
+        log_conf_matrix(G, metrics, classes, epoch)
+
+    if can_log(G.args.t_precision_bar_freq):
+        log_TPR_PPV_F1_bars(G, metrics, classes, epoch)
+
+    if can_log(G.args.t_roc_auc_freq):
+        log_ROC_AUC(G, metrics, classes, epoch)
+
+    return time.perf_counter() - start_time
+
+
 def add_fig_to_tensorboard(G, fig, tag, step, close=True):
     agg = fig.canvas.switch_backends(FigureCanvasAgg)
     agg.draw()
@@ -67,27 +103,6 @@ def add_fig_to_tensorboard(G, fig, tag, step, close=True):
     G.writer.add_image(tag, img, step)
     if close:
         plt.close(fig)
-
-
-def calculate_metrics(G, net, test_loader, epoch, log_loss=True):
-    with torch.no_grad():
-        pred_list = torch.zeros(0, dtype=torch.long,  device='cpu')
-        lbl_list  = torch.zeros(0, dtype=torch.long,  device='cpu')
-        prob_list = torch.zeros(0, dtype=torch.float, device='cpu')
-        for i, data in enumerate(test_loader):
-            images, labels = data[0].to(G.device), data[1].to(G.device)
-
-            outputs = net(images)
-            if log_loss:
-                G.writer.add_scalar('Loss/test', G.criterion(outputs, labels).item(), epoch)
-
-            p_values, p_indexes = torch.max(outputs.data, 1)
-            pred_list = torch.cat([pred_list, p_indexes.view(-1).cpu()])
-            lbl_list  = torch.cat([lbl_list, labels.view(-1).cpu()])
-            prob_list = torch.cat([prob_list, p_values.view(-1).cpu()])
-
-        cm = confusion_matrix(lbl_list, pred_list)
-        return MLMetrics(cm, pred_list, lbl_list, prob_list)
 
 
 # G - global variables
