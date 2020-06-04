@@ -1,0 +1,13 @@
+.idea/
+__pycache__/
+build/
+dist/
+runs/
+data/
+models/
+datasets/
+data/by_class
+data/by_class.zip
+alphabet_recogniser.egg-info/
+egg-files.txt
+
