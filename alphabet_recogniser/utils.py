@@ -67,7 +67,7 @@ class Config:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.criterion = nn.CrossEntropyLoss()
         self.epoch_num = self.args.e
-        self.path_to_model = 'cifar_net.torchmodel'
+        self.path_to_model = self.args.m_load_path
 
         if self.args.t_cm_freq is None:
             self.args.t_cm_freq = sys.maxsize

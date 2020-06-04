@@ -99,9 +99,7 @@ def main():
 
 
 if __name__ == "__main__":
-    parser = ArgParser.get_instance()
-    args = parser.parse_args()
-    parser.check_compatibility(args)
-
-    Config.get_instance().initialize(args)
+    Config.get_instance().initialize(
+        ArgParser.get_args()
+    )
     main()
