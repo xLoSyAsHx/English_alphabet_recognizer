@@ -3,6 +3,8 @@ import torch
 import numpy as np
 from sklearn.metrics import confusion_matrix
 
+from alphabet_recogniser.utils import Config
+
 
 class MLMetrics:
     def __init__(self, cm, pred_list, lbl_list, prob_list):
@@ -28,17 +30,18 @@ class MLMetrics:
         self.ACC = (TP + TN) / (TP + FP + FN + TN + eps)
 
 
-def eval(G, net, test_loader, epoch, log_loss=True):
+def eval(net, test_loader, epoch, log_loss=True):
+    config = Config.get_instance()
     with torch.no_grad():
         pred_list = torch.zeros(0, dtype=torch.long,  device='cpu')
         lbl_list  = torch.zeros(0, dtype=torch.long,  device='cpu')
         prob_list = torch.zeros(0, dtype=torch.float, device='cpu')
         for i, data in enumerate(test_loader):
-            images, labels = data[0].to(G.device), data[1].to(G.device)
+            images, labels = data[0].to(config.device), data[1].to(config.device)
 
             outputs = net(images)
             if log_loss:
-                G.writer.add_scalar('Loss/test', G.criterion(outputs, labels).item(), epoch)
+                config.writer.add_scalar('Loss/test', config.criterion(outputs, labels).item(), epoch)
 
             p_values, p_indexes = torch.max(outputs.data, 1)
             pred_list = torch.cat([pred_list, p_indexes.view(-1).cpu()])
@@ -49,12 +52,12 @@ def eval(G, net, test_loader, epoch, log_loss=True):
         return MLMetrics(cm, pred_list, lbl_list, prob_list)
 
 
-def eval_cached(G, net, test_loader, epoch, log_loss=False):
+def eval_cached(net, test_loader, epoch, log_loss=False):
     if hasattr(eval_cached, 'last_calculated_epoch') and eval_cached.last_calculated_epoch == epoch:
         return eval_cached.metrics
 
     eval_cached.last_calculated_epoch = epoch
-    eval_cached.metrics = eval(G, net, test_loader, epoch, log_loss)
+    eval_cached.metrics = eval(net, test_loader, epoch, log_loss)
 
     return eval_cached.metrics
 

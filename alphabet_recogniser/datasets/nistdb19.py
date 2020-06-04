@@ -1,6 +1,4 @@
-import os
-import sys
-import json
+import os, sys, json
 import compress_pickle
 import numpy as np
 import torch.utils.data as data
@@ -9,7 +7,7 @@ from PIL import Image
 from skimage import io
 from tqdm import tqdm
 
-from .utils import check_integrity, download_and_extract_archive, calculate_md5
+from torchvision.datasets.utils import check_integrity, download_and_extract_archive, calculate_md5
 
 
 class NISTDB19Dataset(data.Dataset):
