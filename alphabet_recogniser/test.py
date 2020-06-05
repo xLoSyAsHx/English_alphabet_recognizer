@@ -82,6 +82,7 @@ def main():
     args = parser.parse_args()
     config = Config.get_instance()
 
+    NISTDB19Dataset.download_and_preprocess(root_dir=args.root_dir, data_type=args.data_type, str_classes=args.classes)
     test_set = NISTDB19Dataset(root_dir=args.root_dir, data_type=args.data_type, train=False, download=True,
                                str_classes=args.classes, use_preproc=True, size_limit=args.n,
                                test_transform=transforms.Compose(
