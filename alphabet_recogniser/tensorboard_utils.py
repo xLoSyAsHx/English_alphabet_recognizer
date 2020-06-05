@@ -8,7 +8,6 @@ from sklearn.metrics import roc_curve, auc
 from torchvision.utils import make_grid
 from scipy import interp
 
-from alphabet_recogniser.test import eval_cached
 from alphabet_recogniser.utils import Config
 
 
@@ -65,12 +64,11 @@ def upload_net_graph(net, test_loader):
         net.to(config.device)
 
 
-def add_logs_to_tensorboard(net, test_loader, epoch):
+def add_logs_to_tensorboard(metrics, epoch):
     config = Config.get_instance()
     start_time = time.perf_counter()
 
     classes = [config.classes[key]['chr'] for key in config.classes]
-    metrics = eval_cached(net, test_loader, epoch)
 
     def can_log(frequence):
         return (epoch % frequence == 0 and epoch != 0) or (epoch % frequence != 0 and config.epoch_num - 1 == epoch)
@@ -135,8 +133,10 @@ def log_conf_matrix(M, classes, step, title='Confusion matrix', tensor_name ='My
 
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         ax.text(j, i, format(cm[i, j], 'd') if cm[i,j]!=0 else '.', horizontalalignment="center", fontsize=fontsize, verticalalignment='center', color= "black")
+
     fig.set_tight_layout(True)
-    add_fig_to_tensorboard(fig, 'confusion_matrix', step)
+    if step is not None:
+        add_fig_to_tensorboard(fig, 'confusion_matrix', step)
 
 
 # G - global variables
@@ -169,7 +169,8 @@ def log_TPR_PPV_F1_bars(M, classes, step):
     autolabel(rects_F1,  ax, fontsize - 3)
 
     fig.set_tight_layout(True)
-    add_fig_to_tensorboard(fig, 'recall/precision/F1', step)
+    if step is not None:
+        add_fig_to_tensorboard(fig, 'recall/precision/F1', step)
 
 
 # G - global variables
@@ -220,4 +221,5 @@ def log_ROC_AUC(M, classes, step):
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     fig.set_tight_layout(True)
-    add_fig_to_tensorboard(fig, 'ROC-AUC', step)
+    if step is not None:
+        add_fig_to_tensorboard(fig, 'ROC-AUC', step)

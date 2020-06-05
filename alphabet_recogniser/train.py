@@ -21,7 +21,7 @@ def train_network(net):
     C = Config.get_instance()
     train_loader, test_loader = get_data_loaders()
 
-    if os.path.exists(C.path_to_model):
+    if C.path_to_model is not None and os.path.exists(C.path_to_model):
         net.load_state_dict(torch.load(C.path_to_model))
     else:
         optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
@@ -52,7 +52,7 @@ def train_network(net):
 
             if (len(train_loader) - 1) % size_to_check_loss != size_to_check_loss - 1:
                 log('train_logs', f'[{epoch + 1}, {len(train_loader):3d}] loss: {running_loss / (len(train_loader) - 1):1.3f}')
-            log_time += add_logs_to_tensorboard(net, test_loader, epoch)
+            log_time += add_logs_to_tensorboard(eval_cached(net, test_loader, epoch), epoch)
             log('train_logs',
                 f'Epoch {epoch + 1}   time: {time.perf_counter() - start_time - log_time:6.0f} seconds'
                 f';      log_time: {log_time:6.0f} seconds', epoch + 1)
@@ -60,7 +60,7 @@ def train_network(net):
             if C.args.m_save_period is not None and epoch % C.args.m_save_period == C.args.m_save_period - 1:
                 save_model(net, f'{100 * np.mean(eval_cached(net, test_loader, epoch).TPR):3.2f}', epoch + 1)
 
-        log_time += add_logs_to_tensorboard(net, test_loader, C.epoch_num - 1)
+        log_time += add_logs_to_tensorboard(eval_cached(net, test_loader, epoch), C.epoch_num - 1)
         log('train_logs', f'Finished Training {time.perf_counter() - start_time - log_time:6.0f} seconds')
 
 
