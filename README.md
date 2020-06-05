@@ -55,8 +55,8 @@ MNIST19 | 92.95% | 0.85 | 0.09 | 500 | All / 3000  |            | ( 'i', 'l' ), 
 
 # Instalation
 
-      git clone https://github.com/xLoSyAsHx/HSE_ML_alphabet_recognition.git
-      cd HSE_ML_alphabet_recognition
+      git clone https://github.com/xLoSyAsHx/English_alphabet_recogniser.git
+      cd English_alphabet_recogniser
       
       pip install -r requirements.txt
       
@@ -64,7 +64,7 @@ MNIST19 | 92.95% | 0.85 | 0.09 | 500 | All / 3000  |            | ( 'i', 'l' ), 
 
 For train you need to specify config.cfg file
 
-      cd HSE_ML_alphabet_recognition
+      cd English_alphabet_recogniser
       python -m alphabet_recogniser.train -config ./data/config.cfg
 
 Config.cgf:
@@ -96,14 +96,14 @@ Config.cgf:
 
 # Test
 
-      cd HSE_ML_alphabet_recognition
+      cd English_alphabet_recogniser
       python -m alphabet_recogniser.test -m ./path_to_model.model -root-dir ./data  -data-type low_letters -n 4000
 
 Note: test.py works only with preprocessed-zipped images. Key '--use-preprocessed-data' for train.py
 
 # Demo
 
-      cd HSE_ML_alphabet_recognition
+      cd English_alphabet_recogniser
       python -m alphabet_recogniser.test -m ./models/2020_April04_15-55-56_acc[87.89]_e[150]_c[26]_tr_s[All]_t_s[2000].model -root-dir ./data  -data-type low_letters -n 4000
 
 # Best models
