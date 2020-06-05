@@ -42,8 +42,8 @@ class ArgParser:
             args_to_process = []
             with open(path_to_cfg, 'r') as cfg_file:
                 for line in cfg_file.read().splitlines():
-                    arg = line.split(' ') if len(line) != 0 else []
-                    if len(arg) == 0:
+                    arg = line.lstrip().split(' ') if len(line) != 0 else []
+                    if len(arg) == 0 or arg[0] == '#':
                         continue
                     elif len(arg) == 2 or (len(arg) == 1 and arg[:2] != '--'):
                         args_to_process.extend(arg)
@@ -71,7 +71,6 @@ class ArgParser:
 
             # Model options
             parser.add_argument('-m-load-path', type=ArgParser.__sys_path__,
-                                default='',
                                 help="Specify path to model for load")
             parser.add_argument('-m-save-path', type=ArgParser.__sys_path__,
                                 help="Specify path to folder for save trained model")
