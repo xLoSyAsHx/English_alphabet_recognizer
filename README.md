@@ -1,6 +1,6 @@
 # English alphabet recognizer
 
-[![Build Status](https://travis-ci.com/xLoSyAsHx/HSE_ML_alphabet_recognition.svg?branch=master)](https://travis-ci.com/xLoSyAsHx/HSE_ML_alphabet_recognition)
+[![Build Status](https://travis-ci.com/xLoSyAsHx/English_alphabet_recognizer.svg?branch=master)](https://travis-ci.com/xLoSyAsHx/English_alphabet_recognizer)
 
 
 Neural Network model for English alphabet recognition. Deep learning engine - PyTorch
@@ -13,19 +13,18 @@ Table of contents
 
 
    * [Current network accuracy](#current-network-accuracy)
-   * [Requirements](#requirements)
-   * [Instalation](#instalation)
+   * [MNIST19 Dataset](#mnist19-dataset)
+   * [Main requirements](#main-requirements)
+   * [Installation](#installation)
    * [Train](#train)
    * [Test](#test)
    * [Demo](#demo)
    * [Best models](#best-models)
-      * [English low letters](#english-low-letters--92.95%)
+      * [Model EngAlphabetRecognizer96](#model-engalphabetrecognizer96)
         * [Snapshot](#snapshot)
    * [Tensorboard](#tensorboard)
-   * [Dataset](#dataset)
-     * [MNIST19 preprocessed sample](#mnist1919-preprocessed-sample)
-     * [Graphs&Metrics](#graphs&metrics)
-        * [English low letters](#english-low-letters)
+   * [Graphs&Metrics](#graphs&metrics)
+      * [EngAlphabetRecognizer96](#engalphabetrecognizer96)
 
 
 # Current network accuracy
@@ -35,25 +34,22 @@ Dataset | Total accuracy | Mean AUC | Std. Dev. | Epoches | Train/Test Size |   
 MNIST19 | 92.95% | 0.85 | 0.09 | 500 | All / 3000  |            | ( 'i', 'l' ), ( 'g', 'q' ) | (0.55, 0.77), (0.78, 0.82) |
 
 
-# Requirements
+# MNIST19 Dataset
 
-      compress-pickle==1.1.1
-      imageio==2.8.0
-      matplotlib==3.2.1
-      numpy==1.18.2
-      opencv-python==4.2.0.34
-      Pillow==7.0.0
-      requests==2.23.0
-      scikit-image==0.16.2
-      scikit-learn==0.22.2.post1
-      tensorboardX==2.0
-      tensorflow==2.2.0rc3
-      termcolor==1.1.0
-      torch==1.5.0
-      torchvision==0.6.0
-      tqdm==4.43.0
+![Samples](https://github.com/xLoSyAsHx/HSE_ML_alphabet_recognition/blob/master/misc/images/MNIST19_preprocessed_samples.png)
 
-# Instalation
+
+# Main requirements
+
+- torch - version 1.5.0
+- torchvision - version 0.6.0
+- tensorboardX - version 2.0
+- scikit-learn - version 0.22.2.post1
+- compress-pickle - version 1.1.1
+
+# Installation
+
+Alphabet recognizer is able to download, unzip and prepare dataset for use on its own. 
 
       git clone https://github.com/xLoSyAsHx/English_alphabet_recognizer.git
       cd English_alphabet_recognizer
@@ -108,8 +104,9 @@ Note: test.py works only with preprocessed-zipped images. Key '--use-preprocesse
 
 # Best models
 
-## English low letters - 92.95%
+## Model EngAlphabetRecognizer96
 
+- Accuracy - 92.95%
 - Mean AUC 0.85 +- 0.09 (1 std. dev.)
 - Epoches 500
 - Worst predicted classes: ( 'i', 'l' ), ( 'g', 'q' )
@@ -128,15 +125,9 @@ Link to tensorboard runs folder: https://drive.google.com/drive/folders/18jtrvTQ
 Link to models folder: https://drive.google.com/drive/folders/1hzrlxoFrR1zDp_1YM9eIk6m-nge-SwXW?usp=sharing
 
 
-# Dataset
+# Graphs&Metrics
 
-## MNIST19 preprocessed samples
-![Samples](https://github.com/xLoSyAsHx/HSE_ML_alphabet_recognition/blob/master/misc/images/MNIST19_preprocessed_samples.png)
-
-
-## Graphs&Metrics
-
-###  English low letters
+##  EngAlphabetRecognizer96
 ![TrainTest_Loss](https://github.com/xLoSyAsHx/HSE_ML_alphabet_recognition/blob/master/misc/images/TrainTest_Loss_e500.png)
 
 ![confusion_matrix](https://github.com/xLoSyAsHx/HSE_ML_alphabet_recognition/blob/master/misc/images/confusion_matrix_e500.png)
