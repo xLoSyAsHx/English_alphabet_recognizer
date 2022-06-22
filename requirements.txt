@@ -1,7 +1,7 @@
 compress-pickle==1.1.1
 imageio==2.8.0
 matplotlib==3.2.1
-numpy==1.18.2
+numpy==1.22.0
 opencv-python==4.2.0.34
 Pillow==7.0.0
 requests==2.23.0
